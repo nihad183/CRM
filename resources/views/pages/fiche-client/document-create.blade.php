@@ -180,7 +180,7 @@
         <div class="page-card">
             <div class="top-row">
                 <h1>Fiche Client</h1>
-                <a class="back-link" href="{{ $fiche->is_fiche_client ? route('fiche-client') : route('fiche-propose') }}">Retour</a>
+                <a class="back-link" href="{{ auth()->user()->isAdmin() && in_array($fiche->client_conversion_status, ['pending', 'rejected'], true) ? route('admin.client-conversion-requests') : ($fiche->is_fiche_client ? route('fiche-client') : route('fiche-propose')) }}">Retour</a>
             </div>
 
             @if (session('status'))
@@ -213,8 +213,18 @@
             </div>
 
             <div class="notice-box">
-                Le changement de Prospect vers fiche client ne se fait qu'apres le televersement obligatoire d'une copie du contrat.
+                Le changement de Prospect vers fiche client se fait apres televersement de la piece jointe puis validation par un administrateur.
             </div>
+
+            @if ($fiche->client_conversion_status === 'pending')
+                <div class="status-box">
+                    Une demande est deja en attente de validation admin.
+                </div>
+            @elseif ($fiche->client_conversion_status === 'rejected')
+                <div class="status-box">
+                    La derniere demande a ete refusee. Vous pouvez televerser une nouvelle piece jointe pour renvoyer la demande.
+                </div>
+            @endif
 
             @if ($fiche->piece_jointe_path)
                 <div class="current-file">
@@ -235,7 +245,7 @@
                 </div>
 
                 <div class="save-row">
-                    <button class="save-btn" type="submit">Transformer en fiche client</button>
+                    <button class="save-btn" type="submit">Envoyer pour validation admin</button>
                 </div>
             </form>
         </div>

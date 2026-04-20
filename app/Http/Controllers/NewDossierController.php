@@ -10,6 +10,19 @@ use Illuminate\Support\Facades\Storage;
 
 class NewDossierController extends Controller
 {
+    private function ensureAdmin(Request $request): void
+    {
+        abort_unless($request->user()?->isAdmin(), 403);
+    }
+
+    private function ensureCanAccessFiche(Request $request, FichePropose $fichePropose): void
+    {
+        abort_unless(
+            $fichePropose->user_id === $request->user()->id || $request->user()?->isAdmin(),
+            403
+        );
+    }
+
     public function create()
     {
         return view('pages.new-dossier');
@@ -58,9 +71,9 @@ class NewDossierController extends Controller
 
     public function showFichePropose(Request $request, FichePropose $fichePropose)
     {
-        abort_unless($fichePropose->user_id === $request->user()->id, 403);
+        $this->ensureCanAccessFiche($request, $fichePropose);
 
-        $fichePropose->load(['contacts', 'resumes', 'user']);
+        $fichePropose->load(['contacts', 'resumes', 'user', 'pieceJointeUploader', 'conversionReviewer']);
 
         return view('pages.fiche-propose.show', [
             'fiche' => $fichePropose,
@@ -69,9 +82,9 @@ class NewDossierController extends Controller
 
     public function showFicheHistory(Request $request, FichePropose $fichePropose)
     {
-        abort_unless($fichePropose->user_id === $request->user()->id, 403);
+        $this->ensureCanAccessFiche($request, $fichePropose);
 
-        $fichePropose->load(['user', 'resumes.user']);
+        $fichePropose->load(['user', 'resumes.user', 'pieceJointeUploader', 'conversionReviewer']);
 
         $events = collect([
             [
@@ -85,9 +98,27 @@ class NewDossierController extends Controller
         if ($fichePropose->converted_to_client_at && $fichePropose->created_at?->ne($fichePropose->converted_to_client_at)) {
             $events->push([
                 'title' => 'Transformation en fiche client',
-                'user_name' => $fichePropose->user?->name ?: 'Utilisateur inconnu',
+                'user_name' => $fichePropose->conversionReviewer?->name ?: 'Utilisateur inconnu',
                 'description' => 'Le dossier a ete transforme de Prospect vers fiche client.',
                 'created_at' => $fichePropose->converted_to_client_at,
+            ]);
+        }
+
+        if ($fichePropose->piece_jointe_uploaded_at) {
+            $events->push([
+                'title' => 'Demande de transformation',
+                'user_name' => $fichePropose->pieceJointeUploader?->name ?: 'Utilisateur inconnu',
+                'description' => 'Une piece jointe a ete ajoutee pour demander la transformation en fiche client.',
+                'created_at' => $fichePropose->piece_jointe_uploaded_at,
+            ]);
+        }
+
+        if ($fichePropose->client_conversion_status === 'rejected' && $fichePropose->conversion_reviewed_at) {
+            $events->push([
+                'title' => 'Transformation refusee',
+                'user_name' => $fichePropose->conversionReviewer?->name ?: 'Utilisateur inconnu',
+                'description' => 'La demande de transformation en fiche client a ete refusee.',
+                'created_at' => $fichePropose->conversion_reviewed_at,
             ]);
         }
 
@@ -110,7 +141,7 @@ class NewDossierController extends Controller
 
     public function createFicheProposeResume(Request $request, FichePropose $fichePropose)
     {
-        abort_unless($fichePropose->user_id === $request->user()->id, 403);
+        $this->ensureCanAccessFiche($request, $fichePropose);
 
         return view('pages.fiche-propose.resume-create', [
             'fiche' => $fichePropose,
@@ -119,7 +150,7 @@ class NewDossierController extends Controller
 
     public function createFicheClientDocument(Request $request, FichePropose $fichePropose)
     {
-        abort_unless($fichePropose->user_id === $request->user()->id, 403);
+        $this->ensureCanAccessFiche($request, $fichePropose);
 
         return view('pages.fiche-client.document-create', [
             'fiche' => $fichePropose,
@@ -128,7 +159,7 @@ class NewDossierController extends Controller
 
     public function editFicheClientDocuments(Request $request, FichePropose $fichePropose)
     {
-        abort_unless($fichePropose->user_id === $request->user()->id, 403);
+        $this->ensureCanAccessFiche($request, $fichePropose);
         abort_unless($fichePropose->is_fiche_client, 404);
 
         return view('pages.fiche-client.documents', [
@@ -138,7 +169,7 @@ class NewDossierController extends Controller
 
     public function storeFicheClientDocument(Request $request, FichePropose $fichePropose)
     {
-        abort_unless($fichePropose->user_id === $request->user()->id, 403);
+        $this->ensureCanAccessFiche($request, $fichePropose);
 
         $validated = $request->validate([
             'piece_jointe' => ['required', 'file', 'max:10240', 'mimes:pdf,doc,docx,jpg,jpeg,png'],
@@ -152,20 +183,25 @@ class NewDossierController extends Controller
         $path = $file->store('fiche-client-documents', 'public');
 
         $fichePropose->update([
-            'is_fiche_client' => true,
-            'converted_to_client_at' => now(),
+            'is_fiche_client' => false,
+            'converted_to_client_at' => null,
             'piece_jointe_path' => $path,
             'piece_jointe_original_name' => $file->getClientOriginalName(),
+            'client_conversion_status' => 'pending',
+            'piece_jointe_uploaded_by' => $request->user()->id,
+            'piece_jointe_uploaded_at' => now(),
+            'conversion_reviewed_by' => null,
+            'conversion_reviewed_at' => null,
         ]);
 
         return redirect()
-            ->route('fiche-client')
-            ->with('status', 'La piece jointe a ete enregistree avec succes et le dossier a ete transforme en fiche client.');
+            ->route('fiche-propose.show', $fichePropose)
+            ->with('status', 'La piece jointe a ete envoyee pour validation admin. Le dossier restera prospect jusqu a la decision.');
     }
 
     public function updateFicheClientDocuments(Request $request, FichePropose $fichePropose)
     {
-        abort_unless($fichePropose->user_id === $request->user()->id, 403);
+        $this->ensureCanAccessFiche($request, $fichePropose);
         abort_unless($fichePropose->is_fiche_client, 404);
 
         $validated = $request->validate([
@@ -208,7 +244,7 @@ class NewDossierController extends Controller
 
     public function printFicheProposeResume(Request $request, FichePropose $fichePropose, FicheProposeResume $resume)
     {
-        abort_unless($fichePropose->user_id === $request->user()->id, 403);
+        $this->ensureCanAccessFiche($request, $fichePropose);
         abort_unless((int) $resume->fiche_propose_id === (int) $fichePropose->id, 404);
 
         $fichePropose->load(['contacts', 'user']);
@@ -222,7 +258,7 @@ class NewDossierController extends Controller
 
     public function downloadFicheProposeResumePdf(Request $request, FichePropose $fichePropose, FicheProposeResume $resume)
     {
-        abort_unless($fichePropose->user_id === $request->user()->id, 403);
+        $this->ensureCanAccessFiche($request, $fichePropose);
         abort_unless((int) $resume->fiche_propose_id === (int) $fichePropose->id, 404);
 
         $fichePropose->load(['contacts', 'user']);
@@ -240,7 +276,7 @@ class NewDossierController extends Controller
 
     public function storeFicheProposeResume(Request $request, FichePropose $fichePropose)
     {
-        abort_unless($fichePropose->user_id === $request->user()->id, 403);
+        $this->ensureCanAccessFiche($request, $fichePropose);
 
         $validated = $request->validate([
             'titre' => ['required', 'string', 'max:255'],
@@ -296,6 +332,11 @@ class NewDossierController extends Controller
             'resume' => $validated['resume'],
             'is_fiche_client' => $validated['dossier_type'] === 'fiche-client',
             'converted_to_client_at' => $validated['dossier_type'] === 'fiche-client' ? now() : null,
+            'client_conversion_status' => $validated['dossier_type'] === 'fiche-client' ? 'approved' : 'not_requested',
+            'piece_jointe_uploaded_by' => $validated['dossier_type'] === 'fiche-client' ? $request->user()->id : null,
+            'piece_jointe_uploaded_at' => $validated['dossier_type'] === 'fiche-client' ? now() : null,
+            'conversion_reviewed_by' => $validated['dossier_type'] === 'fiche-client' ? $request->user()->id : null,
+            'conversion_reviewed_at' => $validated['dossier_type'] === 'fiche-client' ? now() : null,
         ];
 
         if ($validated['dossier_type'] === 'fiche-client') {
@@ -340,5 +381,64 @@ class NewDossierController extends Controller
             ->with('status', $validated['dossier_type'] === 'fiche-client'
                 ? 'Fiche client enregistree avec succes.'
                 : 'Prospect enregistre avec succes.');
+    }
+
+    public function indexClientConversionRequests(Request $request)
+    {
+        $this->ensureAdmin($request);
+
+        $pendingRequests = FichePropose::query()
+            ->with(['user', 'pieceJointeUploader'])
+            ->where('client_conversion_status', 'pending')
+            ->latest('piece_jointe_uploaded_at')
+            ->get();
+
+        $rejectedRequests = FichePropose::query()
+            ->with(['user', 'pieceJointeUploader', 'conversionReviewer'])
+            ->where('client_conversion_status', 'rejected')
+            ->latest('conversion_reviewed_at')
+            ->get();
+
+        return view('pages.admin.client-conversion-requests', [
+            'pendingRequests' => $pendingRequests,
+            'rejectedRequests' => $rejectedRequests,
+        ]);
+    }
+
+    public function approveClientConversionRequest(Request $request, FichePropose $fichePropose)
+    {
+        $this->ensureAdmin($request);
+        abort_unless(in_array($fichePropose->client_conversion_status, ['pending', 'rejected'], true), 404);
+        abort_unless(filled($fichePropose->piece_jointe_path), 422);
+
+        $fichePropose->update([
+            'is_fiche_client' => true,
+            'converted_to_client_at' => now(),
+            'client_conversion_status' => 'approved',
+            'conversion_reviewed_by' => $request->user()->id,
+            'conversion_reviewed_at' => now(),
+        ]);
+
+        return redirect()
+            ->route('admin.client-conversion-requests')
+            ->with('status', 'La demande a ete acceptee. Le dossier est maintenant en fiche client.');
+    }
+
+    public function rejectClientConversionRequest(Request $request, FichePropose $fichePropose)
+    {
+        $this->ensureAdmin($request);
+        abort_unless($fichePropose->client_conversion_status === 'pending', 404);
+
+        $fichePropose->update([
+            'is_fiche_client' => false,
+            'converted_to_client_at' => null,
+            'client_conversion_status' => 'rejected',
+            'conversion_reviewed_by' => $request->user()->id,
+            'conversion_reviewed_at' => now(),
+        ]);
+
+        return redirect()
+            ->route('admin.client-conversion-requests')
+            ->with('status', 'La demande a ete refusee et placee dans la section des dossiers refuses.');
     }
 }

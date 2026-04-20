@@ -127,7 +127,7 @@
         <div class="page-card">
             <div class="top-row">
                 <h1>Historique</h1>
-                <a class="back-link" href="{{ $fiche->is_fiche_client ? route('fiche-client') : route('fiche-propose') }}">Retour</a>
+                <a class="back-link" href="{{ auth()->user()->isAdmin() && in_array($fiche->client_conversion_status, ['pending', 'rejected'], true) ? route('admin.client-conversion-requests') : ($fiche->is_fiche_client ? route('fiche-client') : route('fiche-propose')) }}">Retour</a>
             </div>
 
             <p class="company-name">{{ $fiche->nom_entreprise }}</p>

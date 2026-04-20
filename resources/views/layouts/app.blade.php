@@ -9,7 +9,12 @@
 </head>
 <body>
 
-    <div id="navbar"></div>
+    <div
+        id="navbar"
+        @auth
+            data-user-role="{{ strtolower(trim((string) auth()->user()->role)) }}"
+        @endauth
+    ></div>
 
     @yield('content')
 

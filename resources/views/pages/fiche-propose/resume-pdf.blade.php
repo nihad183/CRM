@@ -6,7 +6,7 @@
 
 @php
     $primaryContact = $fiche->contacts->first();
-    $sheetTitle = request()->routeIs('fiche-client*') ? 'Fiche client' : 'Fiche prospect';
+    $sheetTitle = $fiche->is_fiche_client ? 'Fiche client' : 'Fiche prospect';
     $writerName = trim((string) optional($resume->user)->name) ?: trim((string) optional($fiche->user)->name) ?: 'Nom et prenom';
     $contactName = $primaryContact ? trim($primaryContact->nom . ' ' . $primaryContact->prenom) : '';
 @endphp

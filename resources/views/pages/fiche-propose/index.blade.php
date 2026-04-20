@@ -205,6 +205,28 @@
             gap: 10px;
         }
 
+        .status-chip {
+            display: inline-flex;
+            align-items: center;
+            margin-left: 10px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+            background: #e2e8f0;
+            color: #334155;
+        }
+
+        .status-chip.pending {
+            background: rgba(245, 158, 11, 0.16);
+            color: #92400e;
+        }
+
+        .status-chip.rejected {
+            background: rgba(239, 68, 68, 0.14);
+            color: #991b1b;
+        }
+
         .next-link {
             display: inline-flex;
             align-items: center;
@@ -365,6 +387,11 @@
                             <tr class="summary-row" data-search-row data-company="{{ Str::lower($fiche->nom_entreprise) }}">
                                 <td class="company">
                                     <span>{{ $fiche->nom_entreprise }}</span>
+                                    @if ($fiche->client_conversion_status === 'pending')
+                                        <span class="status-chip pending">En attente admin</span>
+                                    @elseif ($fiche->client_conversion_status === 'rejected')
+                                        <span class="status-chip rejected">Refuse</span>
+                                    @endif
                                     <span class="expand-indicator" aria-hidden="true">+</span>
                                 </td>
                                 <td class="date-cell">{{ $fiche->created_at?->format('Y-m-d H:i') }}</td>

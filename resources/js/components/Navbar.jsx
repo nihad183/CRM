@@ -5,11 +5,14 @@ import {
   FolderPlus,
   FileUser,
   FileText,
+  ShieldCheck,
   User,
 } from "lucide-react";
 
-export default function Navbar() {
+export default function Navbar({ userRole = "employee" }) {
   const currentPath = window.location.pathname;
+  const normalizedRole = String(userRole || "employee").trim().toLowerCase();
+  const isAdmin = normalizedRole === "admin";
 
   return (
     <div className="fixed top-8 left-0 right-0 flex justify-center z-50">
@@ -45,6 +48,18 @@ export default function Navbar() {
         >
           <FileText color={currentPath === "/fiche-propose" ? "#2563eb" : "#000000"} size={20} />
         </DockItem>
+        {isAdmin ? (
+          <DockItem
+            label="Demandes"
+            isActive={currentPath === "/admin/client-conversion-requests"}
+            href="/admin/client-conversion-requests"
+          >
+            <ShieldCheck
+              color={currentPath === "/admin/client-conversion-requests" ? "#2563eb" : "#000000"}
+              size={20}
+            />
+          </DockItem>
+        ) : null}
         <DockItem label="Profil" isActive={currentPath === "/profil"} href="/profil">
           <User color={currentPath === "/profil" ? "#2563eb" : "#000000"} size={20} />
         </DockItem>

@@ -155,7 +155,7 @@ input{
 
         <div class="row">
             <span>Role</span>
-            <strong>{{ auth()->user()->role ?? 'User' }}</strong>
+            <strong>{{ auth()->user()->role === 'admin' ? 'Admin' : 'Employee' }}</strong>
         </div>
 
     </div>
@@ -223,7 +223,7 @@ input{
 
     <div class="row">
         <span>Permissions</span>
-        <strong>Admin Access</strong>
+        <strong>{{ auth()->user()->isAdmin() ? 'Admin Access' : 'Employee Access' }}</strong>
     </div>
 
     <!-- HISTORY -->

@@ -55,6 +55,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/fiche-client/{fichePropose}/documents', [NewDossierController::class, 'editFicheClientDocuments'])->name('fiche-client.documents.edit');
     Route::post('/fiche-client/{fichePropose}/documents', [NewDossierController::class, 'updateFicheClientDocuments'])->name('fiche-client.documents.update');
 
+    Route::get('/admin/client-conversion-requests', [NewDossierController::class, 'indexClientConversionRequests'])->name('admin.client-conversion-requests');
+    Route::post('/admin/client-conversion-requests/{fichePropose}/approve', [NewDossierController::class, 'approveClientConversionRequest'])->name('admin.client-conversion-requests.approve');
+    Route::post('/admin/client-conversion-requests/{fichePropose}/reject', [NewDossierController::class, 'rejectClientConversionRequest'])->name('admin.client-conversion-requests.reject');
+
     Route::get('/fiche-propose', [NewDossierController::class, 'indexFichePropose'])->name('fiche-propose');
     Route::get('/fiche-propose/{fichePropose}', [NewDossierController::class, 'showFichePropose'])->name('fiche-propose.show');
     Route::get('/fiche-propose/{fichePropose}/historique', [NewDossierController::class, 'showFicheHistory'])->name('fiche-propose.history');
@@ -74,7 +78,7 @@ Route::middleware('auth')->group(function () {
     | PROFILE
     |---------------------------
     */
-    Route::get('/profil', [ProfileController::class, 'index']);
+    Route::get('/profil', [ProfileController::class, 'index'])->name('profile');
     Route::put('/profil/update', [ProfileController::class, 'update'])->name('profile.update');
 
     Route::post('/profil/password', [ProfileController::class, 'changePassword'])->name('profile.password');

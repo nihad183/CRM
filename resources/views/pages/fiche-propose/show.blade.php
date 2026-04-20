@@ -426,11 +426,17 @@
         <div class="page-card">
             <div class="top-row">
                 <h1>{{ $fiche->nom_entreprise }}</h1>
-                <a class="back-link" href="{{ $fiche->is_fiche_client ? route('fiche-client') : route('fiche-propose') }}">Retour a la liste</a>
+                <a class="back-link" href="{{ auth()->user()->isAdmin() && in_array($fiche->client_conversion_status, ['pending', 'rejected'], true) ? route('admin.client-conversion-requests') : ($fiche->is_fiche_client ? route('fiche-client') : route('fiche-propose')) }}">Retour a la liste</a>
             </div>
 
             @if (session('status'))
                 <div class="status-box">{{ session('status') }}</div>
+            @endif
+
+            @if ($fiche->client_conversion_status === 'pending')
+                <div class="status-box">Cette fiche prospect attend la validation d un administrateur pour devenir fiche client.</div>
+            @elseif ($fiche->client_conversion_status === 'rejected')
+                <div class="status-box">La demande de transformation a ete refusee. Une nouvelle piece jointe peut etre envoyee pour relancer la validation.</div>
             @endif
 
             <div class="content-stack">

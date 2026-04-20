@@ -4,7 +4,6 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -23,6 +22,7 @@ class User extends Authenticatable
         'password',
         'phone',
         'position',
+        'role',
     ];
 
     /**
@@ -37,8 +37,19 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
-public function loginHistories()
-{
-    return $this->hasMany(LoginHistory::class);
-}
+
+    public function loginHistories()
+    {
+        return $this->hasMany(LoginHistory::class);
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->role === 'admin';
+    }
+
+    public function isEmployee(): bool
+    {
+        return $this->role === 'employee';
+    }
 }

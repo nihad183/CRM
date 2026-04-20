@@ -54,14 +54,19 @@ class AuthController extends Controller
             'password' => ['required', 'confirmed', Password::min(8)],
         ]);
 
+        $role = User::query()->exists() ? 'employee' : 'admin';
+
         User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
+            'role' => $role,
         ]);
 
         return redirect()->route('login')
-            ->with('status', 'Compte cree avec succes.');
+            ->with('status', $role === 'admin'
+                ? 'Compte admin cree avec succes.'
+                : 'Compte employe cree avec succes.');
     }
 
     public function logout(Request $request)

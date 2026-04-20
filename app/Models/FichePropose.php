@@ -19,6 +19,11 @@ class FichePropose extends Model
         'converted_to_client_at',
         'piece_jointe_path',
         'piece_jointe_original_name',
+        'client_conversion_status',
+        'piece_jointe_uploaded_by',
+        'piece_jointe_uploaded_at',
+        'conversion_reviewed_by',
+        'conversion_reviewed_at',
         'n_rc',
         'n_rc_piece_path',
         'n_rc_piece_original_name',
@@ -33,6 +38,16 @@ class FichePropose extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function pieceJointeUploader(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'piece_jointe_uploaded_by');
+    }
+
+    public function conversionReviewer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'conversion_reviewed_by');
     }
 
     public function contacts(): HasMany
@@ -59,6 +74,18 @@ class FichePropose extends Model
     {
         return [
             'converted_to_client_at' => 'datetime',
+            'piece_jointe_uploaded_at' => 'datetime',
+            'conversion_reviewed_at' => 'datetime',
         ];
+    }
+
+    public function hasPendingClientConversionRequest(): bool
+    {
+        return $this->client_conversion_status === 'pending';
+    }
+
+    public function hasRejectedClientConversionRequest(): bool
+    {
+        return $this->client_conversion_status === 'rejected';
     }
 }
