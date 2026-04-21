@@ -17,10 +17,7 @@ class NewDossierController extends Controller
 
     private function ensureCanAccessFiche(Request $request, FichePropose $fichePropose): void
     {
-        abort_unless(
-            $fichePropose->user_id === $request->user()->id || $request->user()?->isAdmin(),
-            403
-        );
+        abort_unless($request->user() !== null, 403);
     }
 
     public function create()
@@ -33,7 +30,6 @@ class NewDossierController extends Controller
         $search = trim((string) $request->query('search', ''));
 
         $fiches = FichePropose::query()
-            ->where('user_id', $request->user()->id)
             ->where(function ($query) {
                 $query->where('is_fiche_client', false)
                     ->orWhereNull('is_fiche_client');
@@ -55,7 +51,6 @@ class NewDossierController extends Controller
         $search = trim((string) $request->query('search', ''));
 
         $fiches = FichePropose::query()
-            ->where('user_id', $request->user()->id)
             ->where('is_fiche_client', true)
             ->when($search !== '', function ($query) use ($search) {
                 $query->where('nom_entreprise', 'like', '%' . $search . '%');

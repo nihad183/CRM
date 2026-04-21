@@ -10,20 +10,21 @@ class DashboardService
 {
     public function build($user)
     {
-        $prospectsCount = FichePropose::where('user_id', $user->id)
+        $prospectsCount = FichePropose::query()
             ->where(function ($q) {
                 $q->where('is_fiche_client', false)
                   ->orWhereNull('is_fiche_client');
             })->count();
 
-        $clientsCount = FichePropose::where('user_id', $user->id)
+        $clientsCount = FichePropose::query()
             ->where('is_fiche_client', true)
+            
             ->count();
 
-        $resumesTodayCount = FicheProposeResume::where('user_id', $user->id)
+        $resumesTodayCount = FicheProposeResume::query()
             ->whereDate('created_at', now())->count();
 
-        $convertedThisMonthCount = FichePropose::where('user_id', $user->id)
+        $convertedThisMonthCount = FichePropose::query()
             ->whereNotNull('converted_to_client_at')
             ->whereYear('converted_to_client_at', now()->year)
             ->whereMonth('converted_to_client_at', now()->month)
@@ -32,10 +33,10 @@ class DashboardService
         $months = collect(range(1, 12))->map(function ($month) use ($user) {
             return [
                 'label' => Carbon::create(now()->year, $month, 1)->format('M'),
-                'prospects' => FichePropose::where('user_id', $user->id)
+                'prospects' => FichePropose::query()
                     ->whereMonth('created_at', $month)
                     ->count(),
-                'clients' => FichePropose::where('user_id', $user->id)
+                'clients' => FichePropose::query()
                     ->where('is_fiche_client', true)
                     ->whereMonth('created_at', $month)
                     ->count(),
