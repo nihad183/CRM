@@ -4,11 +4,13 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use App\Models\LoginHistory;
+use App\Models\FichePropose;
 
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
@@ -41,6 +43,11 @@ class User extends Authenticatable
     public function loginHistories()
     {
         return $this->hasMany(LoginHistory::class);
+    }
+
+    public function ficheProposes(): HasMany
+    {
+        return $this->hasMany(FichePropose::class);
     }
 
     public function isAdmin(): bool

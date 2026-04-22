@@ -56,6 +56,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/fiche-client/{fichePropose}/documents', [NewDossierController::class, 'updateFicheClientDocuments'])->name('fiche-client.documents.update');
 
     Route::get('/admin/client-conversion-requests', [NewDossierController::class, 'indexClientConversionRequests'])->name('admin.client-conversion-requests');
+    Route::get('/admin/liste-de-comarecen', [NewDossierController::class, 'indexAdminUsers'])->name('admin.liste-de-comarecen');
+    Route::get('/admin/competition-utilisateurs', [NewDossierController::class, 'indexAdminCompetition'])->name('admin.competition-utilisateurs');
     Route::post('/admin/client-conversion-requests/{fichePropose}/approve', [NewDossierController::class, 'approveClientConversionRequest'])->name('admin.client-conversion-requests.approve');
     Route::post('/admin/client-conversion-requests/{fichePropose}/reject', [NewDossierController::class, 'rejectClientConversionRequest'])->name('admin.client-conversion-requests.reject');
 

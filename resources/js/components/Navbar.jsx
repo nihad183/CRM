@@ -6,6 +6,8 @@ import {
   FileUser,
   FileText,
   ShieldCheck,
+  Trophy,
+  Users,
   User,
 } from "lucide-react";
 
@@ -48,6 +50,30 @@ export default function Navbar({ userRole = "employee" }) {
         >
           <FileText color={currentPath === "/fiche-propose" ? "#2563eb" : "#000000"} size={20} />
         </DockItem>
+        {isAdmin ? (
+          <DockItem
+            label="commerçants"
+            isActive={currentPath === "/admin/liste-de-comarecen"}
+            href="/admin/liste-de-comarecen"
+          >
+            <Users
+              color={currentPath === "/admin/liste-de-comarecen" ? "#2563eb" : "#000000"}
+              size={20}
+            />
+          </DockItem>
+        ) : null}
+        {isAdmin ? (
+          <DockItem
+            label="Competition"
+            isActive={currentPath === "/admin/competition-utilisateurs"}
+            href="/admin/competition-utilisateurs"
+          >
+            <Trophy
+              color={currentPath === "/admin/competition-utilisateurs" ? "#2563eb" : "#000000"}
+              size={20}
+            />
+          </DockItem>
+        ) : null}
         {isAdmin ? (
           <DockItem
             label="Demandes"

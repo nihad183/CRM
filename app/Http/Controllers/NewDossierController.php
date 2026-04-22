@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\FichePropose;
 use App\Models\FicheProposeResume;
+use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -397,6 +398,53 @@ class NewDossierController extends Controller
         return view('pages.admin.client-conversion-requests', [
             'pendingRequests' => $pendingRequests,
             'rejectedRequests' => $rejectedRequests,
+        ]);
+    }
+
+    public function indexAdminUsers(Request $request)
+    {
+        $this->ensureAdmin($request);
+
+        $users = User::query()
+            ->select(['id', 'name', 'email', 'phone', 'role', 'created_at'])
+            ->orderBy('name')
+            ->get();
+
+        return view('pages.admin.liste-de-comarecen', [
+            'users' => $users,
+        ]);
+    }
+
+    public function indexAdminCompetition(Request $request)
+    {
+        $this->ensureAdmin($request);
+
+        $users = User::query()
+            ->select(['id', 'name', 'role'])
+            ->withCount([
+                'ficheProposes as fiche_prospect_count' => function ($query) {
+                    $query->where(function ($subQuery) {
+                        $subQuery->where('is_fiche_client', false)
+                            ->orWhereNull('is_fiche_client');
+                    });
+                },
+                'ficheProposes as fiche_client_count' => function ($query) {
+                    $query->where('is_fiche_client', true);
+                },
+            ])
+            ->orderByDesc('fiche_client_count')
+            ->orderByDesc('fiche_prospect_count')
+            ->orderBy('name')
+            ->get()
+            ->values()
+            ->map(function ($user, $index) {
+                $user->rank = $index + 1;
+
+                return $user;
+            });
+
+        return view('pages.admin.competition-utilisateurs', [
+            'users' => $users,
         ]);
     }
 

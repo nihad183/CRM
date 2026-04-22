@@ -26,7 +26,7 @@
             background: rgba(255, 255, 255, 0.96);
             border: 1px solid rgba(219, 228, 238, 0.92);
             box-shadow: 0 28px 70px rgba(15, 23, 42, 0.32);
-            color: #0f172a;
+            color: #f2f3f5;
         }
 
         .page-head {
