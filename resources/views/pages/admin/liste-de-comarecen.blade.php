@@ -158,7 +158,7 @@
         <div class="page-card">
             <div class="page-head">
                 <div>
-                    <h1>Liste des commerçants</h1>
+                    <h1>Liste des commrciaux</h1>
                 </div>
             </div>
 

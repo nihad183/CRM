@@ -9,30 +9,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class FichePropose extends Model
 {
     protected $fillable = [
-        'user_id',
         'titre',
         'nom_entreprise',
         'secteur_activite',
         'adresse',
         'resume',
-        'is_fiche_client',
-        'converted_to_client_at',
-        'piece_jointe_path',
-        'piece_jointe_original_name',
-        'client_conversion_status',
-        'piece_jointe_uploaded_by',
-        'piece_jointe_uploaded_at',
-        'conversion_reviewed_by',
-        'conversion_reviewed_at',
         'n_rc',
-        'n_rc_piece_path',
-        'n_rc_piece_original_name',
         'nif',
-        'nif_piece_path',
-        'nif_piece_original_name',
         'nis',
-        'nis_piece_path',
-        'nis_piece_original_name',
     ];
 
     public function user(): BelongsTo
@@ -43,6 +27,11 @@ class FichePropose extends Model
     public function pieceJointeUploader(): BelongsTo
     {
         return $this->belongsTo(User::class, 'piece_jointe_uploaded_by');
+    }
+
+    public function contractUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'contract_user_id');
     }
 
     public function conversionReviewer(): BelongsTo
@@ -76,6 +65,8 @@ class FichePropose extends Model
             'converted_to_client_at' => 'datetime',
             'piece_jointe_uploaded_at' => 'datetime',
             'conversion_reviewed_at' => 'datetime',
+            'contract_signed_at' => 'date',
+            'contract_amount' => 'decimal:2',
         ];
     }
 

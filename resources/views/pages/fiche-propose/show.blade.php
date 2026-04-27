@@ -134,6 +134,10 @@
             word-break: break-word;
         }
 
+        .info-value.inline-value {
+            white-space: normal;
+        }
+
         .doc-inline {
             display: flex;
             align-items: center;
@@ -308,6 +312,10 @@
             white-space: nowrap;
         }
 
+        .resume-card-meta {
+            display: none;
+        }
+
         .print-btn {
             display: inline-flex;
             align-items: center;
@@ -418,7 +426,72 @@
             .contact-summary {
                 grid-template-columns: 1fr;
             }
+        }
 
+        @media (max-width: 720px) {
+            .resume-table {
+                min-width: 0;
+            }
+
+            .resume-table thead {
+                display: none;
+            }
+
+            .resume-table,
+            .resume-table tbody,
+            .resume-table tr,
+            .resume-table td {
+                display: block;
+                width: 100%;
+            }
+
+            .resume-table tbody {
+                display: flex;
+                flex-direction: column;
+                gap: 14px;
+                padding: 14px;
+            }
+
+            .resume-table tr {
+                padding: 16px;
+                border: 1px solid #dbe4ee;
+                border-radius: 18px;
+                background: #f8fafc;
+                box-shadow: 0 8px 18px rgba(15, 23, 42, 0.05);
+            }
+
+            .resume-table td {
+                padding: 0;
+                border-bottom: none;
+            }
+
+            .resume-title {
+                margin-bottom: 10px;
+                font-size: 17px;
+            }
+
+            .resume-date {
+                display: none;
+            }
+
+            .resume-card-meta {
+                display: block;
+                margin-bottom: 14px;
+                color: #64748b;
+                font-size: 13px;
+            }
+
+            .resume-table td:last-child {
+                margin-top: 8px;
+            }
+
+            .print-btn {
+                width: 100%;
+            }
+
+            .resume-viewer {
+                padding: 18px;
+            }
         }
     </style>
 
@@ -490,6 +563,36 @@
                             <div class="info-value">{{ $fiche->created_at?->format('Y-m-d H:i') }}</div>
                         </div>
 
+                        @if ($fiche->contract_amount !== null || $fiche->contract_signed_at || $fiche->contractUser || $fiche->piece_jointe_path)
+                            <div class="info-block">
+                                <span class="info-label">Montant contrat:</span>
+                                <div class="info-value inline-value">{{ $fiche->contract_amount !== null ? number_format((float) $fiche->contract_amount, 0, '.', ',') . ' DZD' : '-' }}</div>
+                            </div>
+
+                            <div class="info-block">
+                                <span class="info-label">Date signature:</span>
+                                <div class="info-value inline-value">{{ $fiche->contract_signed_at?->format('Y-m-d') ?: '-' }}</div>
+                            </div>
+
+                            <div class="info-block">
+                                <span class="info-label">Commercial concerne:</span>
+                                <div class="info-value inline-value">{{ $fiche->contractUser?->name ?: '-' }}</div>
+                            </div>
+
+                            <div class="info-block">
+                                <span class="info-label">Contrat signe:</span>
+                                <div class="info-value inline-value">
+                                    @if ($fiche->piece_jointe_path)
+                                        <a class="doc-file-link" href="{{ asset('storage/' . $fiche->piece_jointe_path) }}" target="_blank" rel="noopener">
+                                            {{ $fiche->piece_jointe_original_name ?: 'Voir fichier contrat' }}
+                                        </a>
+                                    @else
+                                        -
+                                    @endif
+                                </div>
+                            </div>
+                        @endif
+
                         @if ($fiche->hasCompleteClientDocuments())
                             <div class="info-block">
                                 <span class="info-label">N RC:</span>
@@ -545,7 +648,10 @@
                                         data-date="{{ optional($entry['written_at'])->format('Y-m-d H:i') }}"
                                         data-content="{{ $entry['content'] }}"
                                     >
-                                        <td class="resume-title">{{ $entry['title'] }}</td>
+                                        <td>
+                                            <div class="resume-title">{{ $entry['title'] }}</div>
+                                            <div class="resume-card-meta">{{ optional($entry['written_at'])->format('Y-m-d H:i') }}</div>
+                                        </td>
                                         <td class="resume-date">{{ optional($entry['written_at'])->format('Y-m-d H:i') }}</td>
                                         <td>
                                             <a class="print-btn" href="{{ $entry['print_url'] }}" target="_blank" rel="noopener">Imprimer</a>

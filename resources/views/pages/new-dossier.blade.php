@@ -185,6 +185,7 @@
         }
 
         input,
+        select,
         textarea {
             width: 100%;
             padding: 14px 16px;
@@ -202,6 +203,7 @@
         }
 
         input:focus,
+        select:focus,
         textarea:focus {
             border-color: #14b8a6;
             background: #ffffff;
@@ -424,9 +426,24 @@
                             </div>
 
                             <div class="field">
+                                <label for="contract_amount">Montant du contrat</label>
+                                <input id="contract_amount" type="text" name="contract_amount" value="{{ old('contract_amount') }}" placeholder="Ex: 2,500,000" inputmode="decimal">
+                            </div>
+
+                            <div class="field">
+                                <label for="contract_signed_at">Date de signature</label>
+                                <input id="contract_signed_at" type="date" name="contract_signed_at" value="{{ old('contract_signed_at') }}">
+                            </div>
+
+                            <div class="field">
+                                <label for="contract_commercial_name">Commercial concerne</label>
+                                <input id="contract_commercial_name" type="text" value="{{ auth()->user()->name }}" readonly>
+                            </div>
+
+                            <div class="field">
                                 <label>&nbsp;</label>
                                 <div style="padding: 14px 16px; border-radius: 16px; border: 1px dashed #cbd5e1; color: #64748b; background: #f8fafc;">
-                                    Contrat obligatoire pour la fiche client
+                                    Le contrat signe doit contenir le montant, la date de signature et le commercial concerne.
                                 </div>
                             </div>
 

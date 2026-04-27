@@ -18,7 +18,26 @@ class NewDossierController extends Controller
 
     private function ensureCanAccessFiche(Request $request, FichePropose $fichePropose): void
     {
-        abort_unless($request->user() !== null, 403);
+        $user = $request->user();
+
+        abort_unless(
+            $user !== null && ($user->isAdmin() || (int) $fichePropose->user_id === (int) $user->id),
+            403
+        );
+    }
+
+    private function ensureEmployeeCommercial(Request $request): void
+    {
+        abort_unless($request->user()?->isEmployee(), 403);
+    }
+
+    private function normalizeContractAmount(?string $amount): ?string
+    {
+        if ($amount === null) {
+            return null;
+        }
+
+        return str_replace([',', ' '], '', trim($amount));
     }
 
     public function create()
@@ -34,6 +53,9 @@ class NewDossierController extends Controller
             ->where(function ($query) {
                 $query->where('is_fiche_client', false)
                     ->orWhereNull('is_fiche_client');
+            })
+            ->when(! $request->user()?->isAdmin(), function ($query) use ($request) {
+                $query->where('user_id', $request->user()->id);
             })
             ->when($search !== '', function ($query) use ($search) {
                 $query->where('nom_entreprise', 'like', '%' . $search . '%');
@@ -53,6 +75,9 @@ class NewDossierController extends Controller
 
         $fiches = FichePropose::query()
             ->where('is_fiche_client', true)
+            ->when(! $request->user()?->isAdmin(), function ($query) use ($request) {
+                $query->where('user_id', $request->user()->id);
+            })
             ->when($search !== '', function ($query) use ($search) {
                 $query->where('nom_entreprise', 'like', '%' . $search . '%');
             })
@@ -69,7 +94,7 @@ class NewDossierController extends Controller
     {
         $this->ensureCanAccessFiche($request, $fichePropose);
 
-        $fichePropose->load(['contacts', 'resumes', 'user', 'pieceJointeUploader', 'conversionReviewer']);
+        $fichePropose->load(['contacts', 'resumes', 'user', 'pieceJointeUploader', 'conversionReviewer', 'contractUser']);
 
         return view('pages.fiche-propose.show', [
             'fiche' => $fichePropose,
@@ -166,9 +191,16 @@ class NewDossierController extends Controller
     public function storeFicheClientDocument(Request $request, FichePropose $fichePropose)
     {
         $this->ensureCanAccessFiche($request, $fichePropose);
+        $this->ensureEmployeeCommercial($request);
+
+        $request->merge([
+            'contract_amount' => $this->normalizeContractAmount($request->input('contract_amount')),
+        ]);
 
         $validated = $request->validate([
             'piece_jointe' => ['required', 'file', 'max:10240', 'mimes:pdf,doc,docx,jpg,jpeg,png'],
+            'contract_amount' => ['required', 'numeric', 'min:0.01'],
+            'contract_signed_at' => ['required', 'date'],
         ]);
 
         if ($fichePropose->piece_jointe_path) {
@@ -178,17 +210,20 @@ class NewDossierController extends Controller
         $file = $validated['piece_jointe'];
         $path = $file->store('fiche-client-documents', 'public');
 
-        $fichePropose->update([
+        $fichePropose->forceFill([
             'is_fiche_client' => false,
             'converted_to_client_at' => null,
             'piece_jointe_path' => $path,
             'piece_jointe_original_name' => $file->getClientOriginalName(),
+            'contract_amount' => $validated['contract_amount'],
+            'contract_signed_at' => $validated['contract_signed_at'],
+            'contract_user_id' => $request->user()->id,
             'client_conversion_status' => 'pending',
             'piece_jointe_uploaded_by' => $request->user()->id,
             'piece_jointe_uploaded_at' => now(),
             'conversion_reviewed_by' => null,
             'conversion_reviewed_at' => null,
-        ]);
+        ])->save();
 
         return redirect()
             ->route('fiche-propose.show', $fichePropose)
@@ -231,7 +266,7 @@ class NewDossierController extends Controller
             $payload[$columns['name']] = $file->getClientOriginalName();
         }
 
-        $fichePropose->update($payload);
+        $fichePropose->forceFill($payload)->save();
 
         return redirect()
             ->route('fiche-client')
@@ -279,16 +314,17 @@ class NewDossierController extends Controller
             'resume' => ['required', 'string'],
         ]);
 
-        $fichePropose->resumes()->create([
-            'user_id' => $request->user()->id,
+        $resume = $fichePropose->resumes()->make([
             'titre' => $validated['titre'],
             'resume' => $validated['resume'],
         ]);
+        $resume->user_id = $request->user()->id;
+        $resume->save();
 
-        $fichePropose->update([
+        $fichePropose->forceFill([
             'titre' => $validated['titre'],
             'resume' => $validated['resume'],
-        ]);
+        ])->save();
 
         return redirect()
             ->route('fiche-propose.show', $fichePropose)
@@ -297,6 +333,14 @@ class NewDossierController extends Controller
 
     public function storeFichePropose(Request $request)
     {
+        if ($request->input('dossier_type') === 'fiche-client') {
+            $this->ensureEmployeeCommercial($request);
+        }
+
+        $request->merge([
+            'contract_amount' => $this->normalizeContractAmount($request->input('contract_amount')),
+        ]);
+
         $validated = $request->validate([
             'dossier_type' => ['required', 'in:fiche-client,fiche-propose'],
             'titre' => ['required', 'string', 'max:255'],
@@ -311,6 +355,8 @@ class NewDossierController extends Controller
             'contacts.*.email' => ['nullable', 'email', 'max:255'],
             'contacts.*.poste' => ['nullable', 'string', 'max:255'],
             'piece_jointe' => ['required_if:dossier_type,fiche-client', 'nullable', 'file', 'max:10240', 'mimes:pdf,doc,docx,jpg,jpeg,png'],
+            'contract_amount' => ['required_if:dossier_type,fiche-client', 'nullable', 'numeric', 'min:0.01'],
+            'contract_signed_at' => ['required_if:dossier_type,fiche-client', 'nullable', 'date'],
             'n_rc' => ['required_if:dossier_type,fiche-client', 'nullable', 'string', 'max:255'],
             'n_rc_piece' => ['required_if:dossier_type,fiche-client', 'nullable', 'file', 'max:10240', 'mimes:pdf,doc,docx,jpg,jpeg,png'],
             'nif' => ['required_if:dossier_type,fiche-client', 'nullable', 'string', 'max:255'],
@@ -333,6 +379,9 @@ class NewDossierController extends Controller
             'piece_jointe_uploaded_at' => $validated['dossier_type'] === 'fiche-client' ? now() : null,
             'conversion_reviewed_by' => $validated['dossier_type'] === 'fiche-client' ? $request->user()->id : null,
             'conversion_reviewed_at' => $validated['dossier_type'] === 'fiche-client' ? now() : null,
+            'contract_amount' => $validated['dossier_type'] === 'fiche-client' ? $validated['contract_amount'] : null,
+            'contract_signed_at' => $validated['dossier_type'] === 'fiche-client' ? $validated['contract_signed_at'] : null,
+            'contract_user_id' => $validated['dossier_type'] === 'fiche-client' ? $request->user()->id : null,
         ];
 
         if ($validated['dossier_type'] === 'fiche-client') {
@@ -354,7 +403,7 @@ class NewDossierController extends Controller
             }
         }
 
-        $fichePropose = FichePropose::create($payload);
+        $fichePropose = FichePropose::forceCreate($payload);
 
         foreach ($validated['contacts'] as $contact) {
             $fichePropose->contacts()->create([
@@ -366,11 +415,12 @@ class NewDossierController extends Controller
             ]);
         }
 
-        $fichePropose->resumes()->create([
-            'user_id' => $request->user()->id,
+        $resume = $fichePropose->resumes()->make([
             'titre' => $validated['titre'],
             'resume' => $validated['resume'],
         ]);
+        $resume->user_id = $request->user()->id;
+        $resume->save();
 
         return redirect()
             ->route('new-dossier')
@@ -384,13 +434,13 @@ class NewDossierController extends Controller
         $this->ensureAdmin($request);
 
         $pendingRequests = FichePropose::query()
-            ->with(['user', 'pieceJointeUploader'])
+            ->with(['user', 'pieceJointeUploader', 'contractUser'])
             ->where('client_conversion_status', 'pending')
             ->latest('piece_jointe_uploaded_at')
             ->get();
 
         $rejectedRequests = FichePropose::query()
-            ->with(['user', 'pieceJointeUploader', 'conversionReviewer'])
+            ->with(['user', 'pieceJointeUploader', 'conversionReviewer', 'contractUser'])
             ->where('client_conversion_status', 'rejected')
             ->latest('conversion_reviewed_at')
             ->get();
@@ -417,25 +467,52 @@ class NewDossierController extends Controller
 
     public function indexAdminCompetition(Request $request)
     {
-        $this->ensureAdmin($request);
+        abort_unless($request->user() !== null, 403);
+
+        $defaultYear = now()->year;
+        $selectedYear = (int) $request->integer('year', $defaultYear);
+
+        $availableYears = FichePropose::query()
+            ->whereNotNull('contract_signed_at')
+            ->selectRaw('DISTINCT YEAR(contract_signed_at) as year')
+            ->orderByDesc('year')
+            ->pluck('year')
+            ->map(fn ($year) => (int) $year)
+            ->values();
+
+        if (! $availableYears->contains($defaultYear)) {
+            $availableYears->prepend($defaultYear);
+        }
+
+        if (! $availableYears->contains($selectedYear)) {
+            $selectedYear = $defaultYear;
+        }
 
         $users = User::query()
             ->select(['id', 'name', 'role'])
+            ->where('role', 'employee')
             ->withCount([
-                'ficheProposes as fiche_prospect_count' => function ($query) {
-                    $query->where(function ($subQuery) {
-                        $subQuery->where('is_fiche_client', false)
-                            ->orWhereNull('is_fiche_client');
-                    });
-                },
-                'ficheProposes as fiche_client_count' => function ($query) {
-                    $query->where('is_fiche_client', true);
+                'signedContracts as yearly_signed_contracts_count' => function ($query) use ($selectedYear) {
+                    $query->where('is_fiche_client', true)
+                        ->whereYear('contract_signed_at', $selectedYear)
+                        ->whereNotNull('contract_amount');
                 },
             ])
-            ->orderByDesc('fiche_client_count')
-            ->orderByDesc('fiche_prospect_count')
+            ->withSum([
+                'signedContracts as yearly_contract_total' => function ($query) use ($selectedYear) {
+                    $query->where('is_fiche_client', true)
+                        ->whereYear('contract_signed_at', $selectedYear);
+                },
+            ], 'contract_amount')
+            ->orderByDesc('yearly_contract_total')
+            ->orderByDesc('yearly_signed_contracts_count')
             ->orderBy('name')
             ->get()
+            ->map(function ($user) {
+                $user->yearly_contract_total = (float) ($user->yearly_contract_total ?? 0);
+
+                return $user;
+            })
             ->values()
             ->map(function ($user, $index) {
                 $user->rank = $index + 1;
@@ -445,6 +522,9 @@ class NewDossierController extends Controller
 
         return view('pages.admin.competition-utilisateurs', [
             'users' => $users,
+            'currentYearLabel' => $selectedYear,
+            'selectedYear' => $selectedYear,
+            'availableYears' => $availableYears,
         ]);
     }
 
@@ -453,14 +533,21 @@ class NewDossierController extends Controller
         $this->ensureAdmin($request);
         abort_unless(in_array($fichePropose->client_conversion_status, ['pending', 'rejected'], true), 404);
         abort_unless(filled($fichePropose->piece_jointe_path), 422);
+        abort_unless(
+            $fichePropose->contract_amount !== null
+                && filled($fichePropose->contract_signed_at)
+                && filled($fichePropose->contract_user_id)
+                && $fichePropose->contractUser?->isEmployee(),
+            422
+        );
 
-        $fichePropose->update([
+        $fichePropose->forceFill([
             'is_fiche_client' => true,
             'converted_to_client_at' => now(),
             'client_conversion_status' => 'approved',
             'conversion_reviewed_by' => $request->user()->id,
             'conversion_reviewed_at' => now(),
-        ]);
+        ])->save();
 
         return redirect()
             ->route('admin.client-conversion-requests')
@@ -472,13 +559,13 @@ class NewDossierController extends Controller
         $this->ensureAdmin($request);
         abort_unless($fichePropose->client_conversion_status === 'pending', 404);
 
-        $fichePropose->update([
+        $fichePropose->forceFill([
             'is_fiche_client' => false,
             'converted_to_client_at' => null,
             'client_conversion_status' => 'rejected',
             'conversion_reviewed_by' => $request->user()->id,
             'conversion_reviewed_at' => now(),
-        ]);
+        ])->save();
 
         return redirect()
             ->route('admin.client-conversion-requests')

@@ -118,7 +118,10 @@
             font-weight: 700;
         }
 
-        input[type="file"] {
+        input[type="file"],
+        input[type="number"],
+        input[type="date"],
+        select {
             width: 100%;
             padding: 14px 16px;
             border-radius: 16px;
@@ -242,6 +245,22 @@
                     <label for="piece_jointe">Piece jointe</label>
                     <input id="piece_jointe" type="file" name="piece_jointe" accept=".pdf,.doc,.docx" required>
                     <div class="helper-text">Formats acceptes : PDF, DOC, DOCX</div>
+                </div>
+
+                <div class="field">
+                    <label for="contract_amount">Montant du contrat</label>
+                    <input id="contract_amount" type="text" name="contract_amount" value="{{ old('contract_amount', $fiche->contract_amount !== null ? number_format((float) $fiche->contract_amount, 0, '.', ',') : '') }}" placeholder="Ex: 2,500,000" inputmode="decimal" required>
+                </div>
+
+                <div class="field">
+                    <label for="contract_signed_at">Date de signature</label>
+                    <input id="contract_signed_at" type="date" name="contract_signed_at" value="{{ old('contract_signed_at', optional($fiche->contract_signed_at)->format('Y-m-d')) }}" required>
+                </div>
+
+                <div class="field">
+                    <label for="contract_commercial_name">Commercial concerne</label>
+                    <input id="contract_commercial_name" type="text" value="{{ auth()->user()->name }}" readonly>
+                    <div class="helper-text">Le contrat sera automatiquement attribue a l'utilisateur connecte.</div>
                 </div>
 
                 <div class="save-row">

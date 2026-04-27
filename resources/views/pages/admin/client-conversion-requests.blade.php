@@ -188,6 +188,9 @@
                         <tr>
                             <th>Nom entreprise</th>
                             <th>Cree par</th>
+                            <th>Commercial</th>
+                            <th>Montant</th>
+                            <th>Date signature</th>
                             <th>Piece jointe ajoutee par</th>
                             <th>Date demande</th>
                             <th>Etat</th>
@@ -199,6 +202,9 @@
                             <tr>
                                 <td class="company">{{ $fiche->nom_entreprise }}</td>
                                 <td>{{ $fiche->user?->name ?: '-' }}</td>
+                                <td>{{ $fiche->contractUser?->name ?: '-' }}</td>
+                                <td>{{ $fiche->contract_amount !== null ? number_format((float) $fiche->contract_amount, 0, '.', ',') . ' DZD' : '-' }}</td>
+                                <td>{{ $fiche->contract_signed_at?->format('Y-m-d') ?: '-' }}</td>
                                 <td>{{ $fiche->pieceJointeUploader?->name ?: '-' }}</td>
                                 <td>{{ $fiche->piece_jointe_uploaded_at?->format('Y-m-d H:i') ?: '-' }}</td>
                                 <td><span class="badge pending">En attente</span></td>
@@ -219,7 +225,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="empty-state">Aucune demande en attente.</td>
+                                <td colspan="9" class="empty-state">Aucune demande en attente.</td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -233,6 +239,9 @@
                         <tr>
                             <th>Nom entreprise</th>
                             <th>Cree par</th>
+                            <th>Commercial</th>
+                            <th>Montant</th>
+                            <th>Date signature</th>
                             <th>Piece jointe ajoutee par</th>
                             <th>Refuse par</th>
                             <th>Date refus</th>
@@ -244,6 +253,9 @@
                             <tr>
                                 <td class="company">{{ $fiche->nom_entreprise }}</td>
                                 <td>{{ $fiche->user?->name ?: '-' }}</td>
+                                <td>{{ $fiche->contractUser?->name ?: '-' }}</td>
+                                <td>{{ $fiche->contract_amount !== null ? number_format((float) $fiche->contract_amount, 0, '.', ',') . ' DZD' : '-' }}</td>
+                                <td>{{ $fiche->contract_signed_at?->format('Y-m-d') ?: '-' }}</td>
                                 <td>{{ $fiche->pieceJointeUploader?->name ?: '-' }}</td>
                                 <td>{{ $fiche->conversionReviewer?->name ?: '-' }}</td>
                                 <td>{{ $fiche->conversion_reviewed_at?->format('Y-m-d H:i') ?: '-' }}</td>
@@ -263,7 +275,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="empty-state">Aucun dossier refuse.</td>
+                                <td colspan="9" class="empty-state">Aucun dossier refuse.</td>
                             </tr>
                         @endforelse
                     </tbody>

@@ -24,7 +24,6 @@ class User extends Authenticatable
         'password',
         'phone',
         'position',
-        'role',
     ];
 
     /**
@@ -48,6 +47,11 @@ class User extends Authenticatable
     public function ficheProposes(): HasMany
     {
         return $this->hasMany(FichePropose::class);
+    }
+
+    public function signedContracts(): HasMany
+    {
+        return $this->hasMany(FichePropose::class, 'contract_user_id');
     }
 
     public function isAdmin(): bool

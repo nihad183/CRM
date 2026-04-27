@@ -42,6 +42,7 @@
             padding-left: 16px;
             font-size: clamp(30px, 5vw, 44px);
             border-left: 6px solid #14b8a6;
+            color: #000000
         }
 
         .page-head span {
@@ -358,7 +359,7 @@
                         <tr>
                             <th>Nom entreprise</th>
                             <th>Date creation</th>
-                            <th>Piece jointe</th>
+                            <th>Contrat</th>
                             <th>Actions</th>
                         </tr>
                     </thead>

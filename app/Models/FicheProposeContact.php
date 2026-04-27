@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class FicheProposeContact extends Model
 {
     protected $fillable = [
-        'fiche_propose_id',
         'nom',
         'prenom',
         'tel',

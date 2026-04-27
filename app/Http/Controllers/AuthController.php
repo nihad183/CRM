@@ -56,7 +56,7 @@ class AuthController extends Controller
 
         $role = User::query()->exists() ? 'employee' : 'admin';
 
-        User::create([
+        User::forceCreate([
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),

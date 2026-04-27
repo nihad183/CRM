@@ -8,8 +8,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class FicheProposeResume extends Model
 {
     protected $fillable = [
-        'fiche_propose_id',
-        'user_id',
         'titre',
         'resume',
     ];

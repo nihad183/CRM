@@ -52,7 +52,7 @@ export default function Navbar({ userRole = "employee" }) {
         </DockItem>
         {isAdmin ? (
           <DockItem
-            label="commerçants"
+            label="commarciaux"
             isActive={currentPath === "/admin/liste-de-comarecen"}
             href="/admin/liste-de-comarecen"
           >
@@ -62,18 +62,16 @@ export default function Navbar({ userRole = "employee" }) {
             />
           </DockItem>
         ) : null}
-        {isAdmin ? (
-          <DockItem
-            label="Competition"
-            isActive={currentPath === "/admin/competition-utilisateurs"}
-            href="/admin/competition-utilisateurs"
-          >
-            <Trophy
-              color={currentPath === "/admin/competition-utilisateurs" ? "#2563eb" : "#000000"}
-              size={20}
-            />
-          </DockItem>
-        ) : null}
+        <DockItem
+          label="Ranking classement"
+          isActive={currentPath === "/admin/competition-utilisateurs"}
+          href="/admin/competition-utilisateurs"
+        >
+          <Trophy
+            color={currentPath === "/admin/competition-utilisateurs" ? "#2563eb" : "#000000"}
+            size={20}
+          />
+        </DockItem>
         {isAdmin ? (
           <DockItem
             label="Demandes"
