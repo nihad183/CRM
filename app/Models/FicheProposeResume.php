@@ -10,6 +10,7 @@ class FicheProposeResume extends Model
     protected $fillable = [
         'titre',
         'resume',
+        'user_id',
     ];
 
     public function fichePropose(): BelongsTo

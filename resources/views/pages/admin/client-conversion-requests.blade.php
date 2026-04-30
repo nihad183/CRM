@@ -211,7 +211,7 @@
                                 <td>
                                     <div class="actions">
                                         <a class="link-btn" href="{{ route('fiche-propose.show', $fiche) }}">Details</a>
-                                        <a class="link-btn" href="{{ asset('storage/' . $fiche->piece_jointe_path) }}" target="_blank" rel="noopener">Voir piece</a>
+                                        <a class="link-btn" href="{{ route('fiche-propose.documents.download', [$fiche, 'contract']) }}">Voir piece</a>
                                         <form action="{{ route('admin.client-conversion-requests.approve', $fiche) }}" method="POST">
                                             @csrf
                                             <button class="btn btn-approve" type="submit">Accepter</button>
@@ -264,7 +264,7 @@
                                         <span class="badge rejected">Refuse</span>
                                         <a class="link-btn" href="{{ route('fiche-propose.show', $fiche) }}">Details</a>
                                         @if ($fiche->piece_jointe_path)
-                                            <a class="link-btn" href="{{ asset('storage/' . $fiche->piece_jointe_path) }}" target="_blank" rel="noopener">Voir piece</a>
+                                            <a class="link-btn" href="{{ route('fiche-propose.documents.download', [$fiche, 'contract']) }}">Voir piece</a>
                                         @endif
                                         <form action="{{ route('admin.client-conversion-requests.approve', $fiche) }}" method="POST">
                                             @csrf

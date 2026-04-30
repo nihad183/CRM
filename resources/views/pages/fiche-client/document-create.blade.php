@@ -232,7 +232,7 @@
             @if ($fiche->piece_jointe_path)
                 <div class="current-file">
                     Fichier actuel :
-                    <a href="{{ asset('storage/' . $fiche->piece_jointe_path) }}" target="_blank" rel="noopener">
+                    <a href="{{ route('fiche-propose.documents.download', [$fiche, 'contract']) }}">
                         {{ $fiche->piece_jointe_original_name ?: 'Voir la piece jointe' }}
                     </a>
                 </div>

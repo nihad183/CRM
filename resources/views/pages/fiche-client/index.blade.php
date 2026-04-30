@@ -376,7 +376,7 @@
                                 <td class="date-cell">{{ $fiche->created_at?->format('Y-m-d H:i') }}</td>
                                 <td>
                                     @if ($fiche->piece_jointe_path)
-                                        <a class="file-link" href="{{ asset('storage/' . $fiche->piece_jointe_path) }}" target="_blank" rel="noopener">
+                                        <a class="file-link" href="{{ route('fiche-propose.documents.download', [$fiche, 'contract']) }}">
                                             {{ $fiche->piece_jointe_original_name ?: 'Voir fichier' }}
                                         </a>
                                     @else
@@ -400,7 +400,7 @@
                                         <div class="mobile-details-group">
                                             <span class="mobile-details-label">Piece jointe</span>
                                             @if ($fiche->piece_jointe_path)
-                                                <a class="file-link" href="{{ asset('storage/' . $fiche->piece_jointe_path) }}" target="_blank" rel="noopener">
+                                                <a class="file-link" href="{{ route('fiche-propose.documents.download', [$fiche, 'contract']) }}">
                                                     {{ $fiche->piece_jointe_original_name ?: 'Voir fichier' }}
                                                 </a>
                                             @else

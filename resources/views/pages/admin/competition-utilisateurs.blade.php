@@ -573,8 +573,8 @@
                                 </div>
 
                                 <div>
-                                    <span class="role-badge {{ $user->role === 'admin' ? 'admin' : 'employee' }}">
-                                        {{ $user->role === 'admin' ? 'Admin' : 'Employe' }}
+                                    <span class="role-badge {{ $user->isAdmin() ? 'admin' : 'employee' }}">
+                                        {{ $user->roleLabel() }}
                                     </span>
                                 </div>
 

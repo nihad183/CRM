@@ -14,7 +14,7 @@ import {
 export default function Navbar({ userRole = "employee" }) {
   const currentPath = window.location.pathname;
   const normalizedRole = String(userRole || "employee").trim().toLowerCase();
-  const isAdmin = normalizedRole === "admin";
+  const isAdmin = ["admin", "dg"].includes(normalizedRole);
 
   return (
     <div className="fixed top-8 left-0 right-0 flex justify-center z-50">

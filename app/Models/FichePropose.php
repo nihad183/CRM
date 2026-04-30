@@ -9,14 +9,33 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class FichePropose extends Model
 {
     protected $fillable = [
+        'user_id',
         'titre',
         'nom_entreprise',
         'secteur_activite',
         'adresse',
         'resume',
+        'is_fiche_client',
+        'converted_to_client_at',
+        'client_conversion_status',
+        'piece_jointe_uploaded_by',
+        'piece_jointe_uploaded_at',
+        'conversion_reviewed_by',
+        'conversion_reviewed_at',
+        'contract_amount',
+        'contract_signed_at',
+        'contract_user_id',
+        'piece_jointe_path',
+        'piece_jointe_original_name',
         'n_rc',
+        'n_rc_piece_path',
+        'n_rc_piece_original_name',
         'nif',
+        'nif_piece_path',
+        'nif_piece_original_name',
         'nis',
+        'nis_piece_path',
+        'nis_piece_original_name',
     ];
 
     public function user(): BelongsTo

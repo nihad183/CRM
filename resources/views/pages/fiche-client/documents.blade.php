@@ -192,7 +192,7 @@
                         @if ($fiche->n_rc_piece_path)
                             <div class="current-file">
                                 Fichier actuel :
-                                <a href="{{ asset('storage/' . $fiche->n_rc_piece_path) }}" target="_blank" rel="noopener">
+                                <a href="{{ route('fiche-propose.documents.download', [$fiche, 'n_rc']) }}">
                                     {{ $fiche->n_rc_piece_original_name ?: 'Voir document RC' }}
                                 </a>
                             </div>
@@ -213,7 +213,7 @@
                         @if ($fiche->nif_piece_path)
                             <div class="current-file">
                                 Fichier actuel :
-                                <a href="{{ asset('storage/' . $fiche->nif_piece_path) }}" target="_blank" rel="noopener">
+                                <a href="{{ route('fiche-propose.documents.download', [$fiche, 'nif']) }}">
                                     {{ $fiche->nif_piece_original_name ?: 'Voir document NIF' }}
                                 </a>
                             </div>
@@ -234,7 +234,7 @@
                         @if ($fiche->nis_piece_path)
                             <div class="current-file">
                                 Fichier actuel :
-                                <a href="{{ asset('storage/' . $fiche->nis_piece_path) }}" target="_blank" rel="noopener">
+                                <a href="{{ route('fiche-propose.documents.download', [$fiche, 'nis']) }}">
                                     {{ $fiche->nis_piece_original_name ?: 'Voir document NIS' }}
                                 </a>
                             </div>

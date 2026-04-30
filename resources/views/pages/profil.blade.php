@@ -155,7 +155,7 @@ input{
 
         <div class="row">
             <span>Role</span>
-            <strong>{{ auth()->user()->role === 'admin' ? 'Admin' : 'Employee' }}</strong>
+            <strong>{{ auth()->user()->roleLabel() }}</strong>
         </div>
 
     </div>

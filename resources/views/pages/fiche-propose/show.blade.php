@@ -583,7 +583,7 @@
                                 <span class="info-label">Contrat signe:</span>
                                 <div class="info-value inline-value">
                                     @if ($fiche->piece_jointe_path)
-                                        <a class="doc-file-link" href="{{ asset('storage/' . $fiche->piece_jointe_path) }}" target="_blank" rel="noopener">
+                                        <a class="doc-file-link" href="{{ route('fiche-propose.documents.download', [$fiche, 'contract']) }}">
                                             {{ $fiche->piece_jointe_original_name ?: 'Voir fichier contrat' }}
                                         </a>
                                     @else
@@ -598,7 +598,7 @@
                                 <span class="info-label">N RC:</span>
                                 <div class="info-value doc-inline">
                                     <span class="doc-number">{{ $fiche->n_rc }}</span>
-                                    <a class="doc-file-link" href="{{ asset('storage/' . $fiche->n_rc_piece_path) }}" target="_blank" rel="noopener">
+                                    <a class="doc-file-link" href="{{ route('fiche-propose.documents.download', [$fiche, 'n_rc']) }}">
                                         Fichier
                                     </a>
                                 </div>
@@ -608,7 +608,7 @@
                                 <span class="info-label">NIF:</span>
                                 <div class="info-value doc-inline">
                                     <span class="doc-number">{{ $fiche->nif }}</span>
-                                    <a class="doc-file-link" href="{{ asset('storage/' . $fiche->nif_piece_path) }}" target="_blank" rel="noopener">
+                                    <a class="doc-file-link" href="{{ route('fiche-propose.documents.download', [$fiche, 'nif']) }}">
                                         Fichier
                                     </a>
                                 </div>
@@ -618,7 +618,7 @@
                                 <span class="info-label">NIS:</span>
                                 <div class="info-value doc-inline">
                                     <span class="doc-number">{{ $fiche->nis }}</span>
-                                    <a class="doc-file-link" href="{{ asset('storage/' . $fiche->nis_piece_path) }}" target="_blank" rel="noopener">
+                                    <a class="doc-file-link" href="{{ route('fiche-propose.documents.download', [$fiche, 'nis']) }}">
                                         Fichier
                                     </a>
                                 </div>

@@ -56,11 +56,27 @@ class User extends Authenticatable
 
     public function isAdmin(): bool
     {
-        return $this->role === 'admin';
+        return in_array(strtolower((string) $this->role), ['admin', 'dg'], true);
     }
 
     public function isEmployee(): bool
     {
         return $this->role === 'employee';
+    }
+
+    public function canAccessCommercialFeatures(): bool
+    {
+        return $this->isAdmin() || $this->isEmployee();
+    }
+
+    public function roleLabel(): string
+    {
+        $role = strtolower((string) $this->role);
+
+        return match ($role) {
+            'admin' => 'Admin',
+            'dg' => 'DG',
+            default => 'Employee',
+        };
     }
 }

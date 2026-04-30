@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Support\Facades\RateLimiter;
 
 class AuthController extends Controller
 {
@@ -28,19 +29,27 @@ class AuthController extends Controller
             'password' => ['required', 'string'],
         ]);
 
-        if (!Auth::attempt($credentials, $request->boolean('remember'))) {
+        if (RateLimiter::tooManyAttempts($request->ip(), 5)) {
             return back()->withErrors([
-                'email' => 'Email ou mot de passe incorrect.',
+                'email' => 'Too many attempts. Try again later.',
+            ]);
+        }
+
+        if (!Auth::attempt($credentials, $request->boolean('remember'))) {
+            RateLimiter::hit($request->ip(), 60); 
+
+            return back()->withErrors([
+                'email' => 'Invalid credentials.',
             ])->onlyInput('email');
         }
+
+        RateLimiter::clear($request->ip());
 
         $request->session()->regenerate();
 
         LoginHistory::create([
             'user_id' => Auth::id(),
             'login_at' => now(),
-            'ip_address' => $request->ip(),
-            'user_agent' => $request->userAgent(),
         ]);
 
         return redirect()->route('dashboard');
@@ -54,9 +63,9 @@ class AuthController extends Controller
             'password' => ['required', 'confirmed', Password::min(8)],
         ]);
 
-        $role = User::query()->exists() ? 'employee' : 'admin';
+        $role = 'employee';
 
-        User::forceCreate([
+        $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
@@ -64,9 +73,7 @@ class AuthController extends Controller
         ]);
 
         return redirect()->route('login')
-            ->with('status', $role === 'admin'
-                ? 'Compte admin cree avec succes.'
-                : 'Compte employe cree avec succes.');
+            ->with('status', 'Compte cree avec succes.');
     }
 
     public function logout(Request $request)

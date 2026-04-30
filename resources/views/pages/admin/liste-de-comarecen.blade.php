@@ -165,15 +165,15 @@
             <div class="stats-strip">
                 <div class="stat-card">
                     <strong>{{ $users->count() }}</strong>
-                    <span>Total utilisateurs</span>
-                </div>
-                <div class="stat-card">
-                    <strong>{{ $users->where('role', 'admin')->count() }}</strong>
-                    <span>Administrateurs</span>
+                    <span>Total commerciaux</span>
                 </div>
                 <div class="stat-card">
                     <strong>{{ $users->where('role', 'employee')->count() }}</strong>
                     <span>Employes</span>
+                </div>
+                <div class="stat-card">
+                    <strong>{{ $users->filter(fn ($user) => strtolower((string) $user->role) === 'dg')->count() }}</strong>
+                    <span>DG</span>
                 </div>
             </div>
 
@@ -201,8 +201,8 @@
                                 <td>{{ $user->email }}</td>
                                 <td>{{ $user->phone ?: '-' }}</td>
                                 <td>
-                                    <span class="badge {{ $user->role === 'admin' ? 'admin' : 'employee' }}">
-                                        {{ $user->role === 'admin' ? 'Admin' : 'Employe' }}
+                                    <span class="badge {{ $user->isAdmin() ? 'admin' : 'employee' }}">
+                                        {{ $user->roleLabel() }}
                                     </span>
                                 </td>
                             </tr>

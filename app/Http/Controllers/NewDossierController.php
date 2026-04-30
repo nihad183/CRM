@@ -8,42 +8,73 @@ use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class NewDossierController extends Controller
 {
+    private function ensureAuthenticated(Request $request): void
+    {
+        abort_unless($request->user() !== null, 403);
+    }
+
+    private function ensureCanAccessFiche(Request $request, FichePropose $fichePropose): void
+    {
+        $this->ensureAuthenticated($request);
+    }
+
     private function ensureAdmin(Request $request): void
     {
         abort_unless($request->user()?->isAdmin(), 403);
     }
 
-    private function ensureCanAccessFiche(Request $request, FichePropose $fichePropose): void
-    {
-        $user = $request->user();
-
-        abort_unless(
-            $user !== null && ($user->isAdmin() || (int) $fichePropose->user_id === (int) $user->id),
-            403
-        );
-    }
-
     private function ensureEmployeeCommercial(Request $request): void
     {
-        abort_unless($request->user()?->isEmployee(), 403);
+        abort_unless($request->user()?->canAccessCommercialFeatures(), 403);
     }
 
     private function normalizeContractAmount(?string $amount): ?string
     {
-        if ($amount === null) {
-            return null;
-        }
-
-        return str_replace([',', ' '], '', trim($amount));
+        return $amount ? str_replace([',', ' '], '', trim($amount)) : null;
     }
 
     public function create()
     {
         return view('pages.new-dossier');
     }
+
+    private function storeSecureFile($file, string $directory, string $label): array
+    {
+        $extension = strtolower($file->getClientOriginalExtension() ?: $file->extension() ?: 'bin');
+        $filename = (string) Str::uuid() . '.' . $extension;
+
+        return [
+            'path' => $file->storeAs($directory, $filename, 'local'),
+            'original_name' => Str::slug($label, '-') . '.' . $extension,
+        ];
+    }
+
+    private function deleteSecureFile(?string $path): void
+    {
+        if (filled($path)) {
+            Storage::disk('local')->delete($path);
+        }
+    }
+
+    private function resolveResume(FichePropose $fichePropose, int|string $resumeId): FicheProposeResume
+    {
+        return $fichePropose->resumes()->findOrFail($resumeId);
+    }
+
+    private function documentColumnMap(): array
+    {
+        return [
+            'contract' => ['path' => 'piece_jointe_path', 'name' => 'piece_jointe_original_name', 'download' => 'contrat-signe'],
+            'n_rc' => ['path' => 'n_rc_piece_path', 'name' => 'n_rc_piece_original_name', 'download' => 'document-rc'],
+            'nif' => ['path' => 'nif_piece_path', 'name' => 'nif_piece_original_name', 'download' => 'document-nif'],
+            'nis' => ['path' => 'nis_piece_path', 'name' => 'nis_piece_original_name', 'download' => 'document-nis'],
+        ];
+    }
+
 
     public function indexFichePropose(Request $request)
     {
@@ -53,9 +84,6 @@ class NewDossierController extends Controller
             ->where(function ($query) {
                 $query->where('is_fiche_client', false)
                     ->orWhereNull('is_fiche_client');
-            })
-            ->when(! $request->user()?->isAdmin(), function ($query) use ($request) {
-                $query->where('user_id', $request->user()->id);
             })
             ->when($search !== '', function ($query) use ($search) {
                 $query->where('nom_entreprise', 'like', '%' . $search . '%');
@@ -75,9 +103,6 @@ class NewDossierController extends Controller
 
         $fiches = FichePropose::query()
             ->where('is_fiche_client', true)
-            ->when(! $request->user()?->isAdmin(), function ($query) use ($request) {
-                $query->where('user_id', $request->user()->id);
-            })
             ->when($search !== '', function ($query) use ($search) {
                 $query->where('nom_entreprise', 'like', '%' . $search . '%');
             })
@@ -203,18 +228,15 @@ class NewDossierController extends Controller
             'contract_signed_at' => ['required', 'date'],
         ]);
 
-        if ($fichePropose->piece_jointe_path) {
-            Storage::disk('public')->delete($fichePropose->piece_jointe_path);
-        }
-
         $file = $validated['piece_jointe'];
-        $path = $file->store('fiche-client-documents', 'public');
+        $this->deleteSecureFile($fichePropose->piece_jointe_path);
+        $storedFile = $this->storeSecureFile($file, 'fiche-client-documents/contrat', 'contrat-signe');
 
-        $fichePropose->forceFill([
+        $fichePropose->update([
             'is_fiche_client' => false,
             'converted_to_client_at' => null,
-            'piece_jointe_path' => $path,
-            'piece_jointe_original_name' => $file->getClientOriginalName(),
+            'piece_jointe_path' => $storedFile['path'],
+            'piece_jointe_original_name' => $storedFile['original_name'],
             'contract_amount' => $validated['contract_amount'],
             'contract_signed_at' => $validated['contract_signed_at'],
             'contract_user_id' => $request->user()->id,
@@ -223,11 +245,28 @@ class NewDossierController extends Controller
             'piece_jointe_uploaded_at' => now(),
             'conversion_reviewed_by' => null,
             'conversion_reviewed_at' => null,
-        ])->save();
+        ]);
 
         return redirect()
             ->route('fiche-propose.show', $fichePropose)
             ->with('status', 'La piece jointe a ete envoyee pour validation admin. Le dossier restera prospect jusqu a la decision.');
+    }
+
+    public function downloadFicheDocument(Request $request, FichePropose $fichePropose, string $documentType)
+    {
+        $this->ensureCanAccessFiche($request, $fichePropose);
+
+        $document = $this->documentColumnMap()[$documentType] ?? null;
+        abort_unless($document !== null, 404);
+
+        $path = $fichePropose->{$document['path']};
+        abort_unless(filled($path), 404);
+        abort_unless(Storage::disk('local')->exists($path), 404, 'Ce fichier est introuvable.');
+
+        $downloadName = $fichePropose->{$document['name']}
+            ?: $document['download'] . '.' . pathinfo($path, PATHINFO_EXTENSION);
+
+        return Storage::disk('local')->download($path, $downloadName);
     }
 
     public function updateFicheClientDocuments(Request $request, FichePropose $fichePropose)
@@ -245,9 +284,9 @@ class NewDossierController extends Controller
         ]);
 
         $uploads = [
-            'n_rc_piece' => ['path' => 'n_rc_piece_path', 'name' => 'n_rc_piece_original_name', 'dir' => 'fiche-client-documents/n-rc'],
-            'nif_piece' => ['path' => 'nif_piece_path', 'name' => 'nif_piece_original_name', 'dir' => 'fiche-client-documents/nif'],
-            'nis_piece' => ['path' => 'nis_piece_path', 'name' => 'nis_piece_original_name', 'dir' => 'fiche-client-documents/nis'],
+            'n_rc_piece' => ['path' => 'n_rc_piece_path', 'name' => 'n_rc_piece_original_name', 'dir' => 'fiche-client-documents/n-rc', 'label' => 'document-rc'],
+            'nif_piece' => ['path' => 'nif_piece_path', 'name' => 'nif_piece_original_name', 'dir' => 'fiche-client-documents/nif', 'label' => 'document-nif'],
+            'nis_piece' => ['path' => 'nis_piece_path', 'name' => 'nis_piece_original_name', 'dir' => 'fiche-client-documents/nis', 'label' => 'document-nis'],
         ];
 
         $payload = [
@@ -257,26 +296,25 @@ class NewDossierController extends Controller
         ];
 
         foreach ($uploads as $input => $columns) {
-            if ($fichePropose->{$columns['path']}) {
-                Storage::disk('public')->delete($fichePropose->{$columns['path']});
-            }
-
             $file = $validated[$input];
-            $payload[$columns['path']] = $file->store($columns['dir'], 'public');
-            $payload[$columns['name']] = $file->getClientOriginalName();
+            $this->deleteSecureFile($fichePropose->{$columns['path']});
+
+            $storedFile = $this->storeSecureFile($file, $columns['dir'], $columns['label']);
+            $payload[$columns['path']] = $storedFile['path'];
+            $payload[$columns['name']] = $storedFile['original_name'];
         }
 
-        $fichePropose->forceFill($payload)->save();
+        $fichePropose->update($payload);
 
         return redirect()
             ->route('fiche-client')
             ->with('status', 'Les informations N RC, NIF et NIS ont ete enregistrees avec succes.');
     }
 
-    public function printFicheProposeResume(Request $request, FichePropose $fichePropose, FicheProposeResume $resume)
+    public function printFicheProposeResume(Request $request, FichePropose $fichePropose, string $resume)
     {
         $this->ensureCanAccessFiche($request, $fichePropose);
-        abort_unless((int) $resume->fiche_propose_id === (int) $fichePropose->id, 404);
+        $resume = $this->resolveResume($fichePropose, $resume);
 
         $fichePropose->load(['contacts', 'user']);
         $resume->load('user');
@@ -287,10 +325,10 @@ class NewDossierController extends Controller
         ]);
     }
 
-    public function downloadFicheProposeResumePdf(Request $request, FichePropose $fichePropose, FicheProposeResume $resume)
+    public function downloadFicheProposeResumePdf(Request $request, FichePropose $fichePropose, string $resume)
     {
         $this->ensureCanAccessFiche($request, $fichePropose);
-        abort_unless((int) $resume->fiche_propose_id === (int) $fichePropose->id, 404);
+        $resume = $this->resolveResume($fichePropose, $resume);
 
         $fichePropose->load(['contacts', 'user']);
         $resume->load('user');
@@ -314,17 +352,16 @@ class NewDossierController extends Controller
             'resume' => ['required', 'string'],
         ]);
 
-        $resume = $fichePropose->resumes()->make([
+        $fichePropose->resumes()->create([
+            'titre' => $validated['titre'],
+            'resume' => $validated['resume'],
+            'user_id' => $request->user()->id,
+        ]);
+
+        $fichePropose->update([
             'titre' => $validated['titre'],
             'resume' => $validated['resume'],
         ]);
-        $resume->user_id = $request->user()->id;
-        $resume->save();
-
-        $fichePropose->forceFill([
-            'titre' => $validated['titre'],
-            'resume' => $validated['resume'],
-        ])->save();
 
         return redirect()
             ->route('fiche-propose.show', $fichePropose)
@@ -386,10 +423,10 @@ class NewDossierController extends Controller
 
         if ($validated['dossier_type'] === 'fiche-client') {
             $uploads = [
-                'piece_jointe' => ['path' => 'piece_jointe_path', 'name' => 'piece_jointe_original_name', 'dir' => 'fiche-client-documents/contrat'],
-                'n_rc_piece' => ['path' => 'n_rc_piece_path', 'name' => 'n_rc_piece_original_name', 'dir' => 'fiche-client-documents/n-rc'],
-                'nif_piece' => ['path' => 'nif_piece_path', 'name' => 'nif_piece_original_name', 'dir' => 'fiche-client-documents/nif'],
-                'nis_piece' => ['path' => 'nis_piece_path', 'name' => 'nis_piece_original_name', 'dir' => 'fiche-client-documents/nis'],
+                'piece_jointe' => ['path' => 'piece_jointe_path', 'name' => 'piece_jointe_original_name', 'dir' => 'fiche-client-documents/contrat', 'label' => 'contrat-signe'],
+                'n_rc_piece' => ['path' => 'n_rc_piece_path', 'name' => 'n_rc_piece_original_name', 'dir' => 'fiche-client-documents/n-rc', 'label' => 'document-rc'],
+                'nif_piece' => ['path' => 'nif_piece_path', 'name' => 'nif_piece_original_name', 'dir' => 'fiche-client-documents/nif', 'label' => 'document-nif'],
+                'nis_piece' => ['path' => 'nis_piece_path', 'name' => 'nis_piece_original_name', 'dir' => 'fiche-client-documents/nis', 'label' => 'document-nis'],
             ];
 
             $payload['n_rc'] = $validated['n_rc'];
@@ -398,12 +435,13 @@ class NewDossierController extends Controller
 
             foreach ($uploads as $input => $columns) {
                 $file = $validated[$input];
-                $payload[$columns['path']] = $file->store($columns['dir'], 'public');
-                $payload[$columns['name']] = $file->getClientOriginalName();
+                $storedFile = $this->storeSecureFile($file, $columns['dir'], $columns['label']);
+                $payload[$columns['path']] = $storedFile['path'];
+                $payload[$columns['name']] = $storedFile['original_name'];
             }
         }
 
-        $fichePropose = FichePropose::forceCreate($payload);
+        $fichePropose = FichePropose::create($payload);
 
         foreach ($validated['contacts'] as $contact) {
             $fichePropose->contacts()->create([
@@ -415,12 +453,11 @@ class NewDossierController extends Controller
             ]);
         }
 
-        $resume = $fichePropose->resumes()->make([
+        $fichePropose->resumes()->create([
             'titre' => $validated['titre'],
             'resume' => $validated['resume'],
+            'user_id' => $request->user()->id,
         ]);
-        $resume->user_id = $request->user()->id;
-        $resume->save();
 
         return redirect()
             ->route('new-dossier')
@@ -457,6 +494,7 @@ class NewDossierController extends Controller
 
         $users = User::query()
             ->select(['id', 'name', 'email', 'phone', 'role', 'created_at'])
+            ->whereIn('role', ['employee', 'dg', 'DG'])
             ->orderBy('name')
             ->get();
 
@@ -537,17 +575,17 @@ class NewDossierController extends Controller
             $fichePropose->contract_amount !== null
                 && filled($fichePropose->contract_signed_at)
                 && filled($fichePropose->contract_user_id)
-                && $fichePropose->contractUser?->isEmployee(),
+                && $fichePropose->contractUser?->canAccessCommercialFeatures(),
             422
         );
 
-        $fichePropose->forceFill([
+        $fichePropose->update([
             'is_fiche_client' => true,
             'converted_to_client_at' => now(),
             'client_conversion_status' => 'approved',
             'conversion_reviewed_by' => $request->user()->id,
             'conversion_reviewed_at' => now(),
-        ])->save();
+        ]);
 
         return redirect()
             ->route('admin.client-conversion-requests')
@@ -559,13 +597,13 @@ class NewDossierController extends Controller
         $this->ensureAdmin($request);
         abort_unless($fichePropose->client_conversion_status === 'pending', 404);
 
-        $fichePropose->forceFill([
+        $fichePropose->update([
             'is_fiche_client' => false,
             'converted_to_client_at' => null,
             'client_conversion_status' => 'rejected',
             'conversion_reviewed_by' => $request->user()->id,
             'conversion_reviewed_at' => now(),
-        ])->save();
+        ]);
 
         return redirect()
             ->route('admin.client-conversion-requests')
