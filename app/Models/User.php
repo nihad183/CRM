@@ -24,6 +24,8 @@ class User extends Authenticatable
         'password',
         'phone',
         'position',
+        'role',
+        'company',
     ];
 
     /**
@@ -61,7 +63,7 @@ class User extends Authenticatable
 
     public function isEmployee(): bool
     {
-        return $this->role === 'employee';
+        return strtolower((string) $this->role) === 'employee';
     }
 
     public function canAccessCommercialFeatures(): bool
@@ -77,6 +79,51 @@ class User extends Authenticatable
             'admin' => 'Admin',
             'dg' => 'DG',
             default => 'Employee',
+        };
+    }
+
+    public function normalizedCompany(): string
+    {
+        $company = strtolower(trim((string) $this->company));
+
+        return match ($company) {
+            'rmgc' => 'rmgc',
+            'invest market', 'invest_market', 'invest-market' => 'invest_market',
+            default => 'invest_market',
+        };
+    }
+
+    public function companyLabel(): string
+    {
+        return $this->normalizedCompany() === 'rmgc' ? 'RMGC' : 'Invest Market';
+    }
+
+    public function belongsToCompany(string $company): bool
+    {
+        return $this->normalizedCompany() === self::normalizeCompanyValue($company);
+    }
+
+    public function canModifyFiche(FichePropose $fichePropose): bool
+    {
+        if ($this->isAdmin()) {
+            return true;
+        }
+
+        if (! $this->isEmployee()) {
+            return false;
+        }
+
+        return $this->belongsToCompany((string) $fichePropose->user?->company);
+    }
+
+    public static function normalizeCompanyValue(?string $company): string
+    {
+        $value = strtolower(trim((string) $company));
+
+        return match ($value) {
+            'rmgc' => 'rmgc',
+            'invest market', 'invest_market', 'invest-market' => 'invest_market',
+            default => 'invest_market',
         };
     }
 }

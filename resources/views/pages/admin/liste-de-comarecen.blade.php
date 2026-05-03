@@ -81,6 +81,15 @@
             background: #f8fafc;
         }
 
+        .status-box {
+            margin-bottom: 18px;
+            padding: 16px 18px;
+            border-radius: 18px;
+            background: rgba(20, 184, 166, 0.12);
+            border: 1px solid rgba(45, 212, 191, 0.3);
+            color: #115e59;
+        }
+
         table {
             width: 100%;
             min-width: 860px;
@@ -135,6 +144,38 @@
             color: #1d4ed8;
         }
 
+        .company-form {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .company-select {
+            min-width: 170px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px solid #cbd5e1;
+            background: #ffffff;
+            color: #0f172a;
+            outline: none;
+        }
+
+        .save-btn {
+            padding: 10px 14px;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #0f766e, #14b8a6);
+            color: #ffffff;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .muted-text {
+            color: #64748b;
+            font-size: 14px;
+        }
+
         .empty-state {
             padding: 28px;
             text-align: center;
@@ -159,17 +200,24 @@
             <div class="page-head">
                 <div>
                     <h1>Liste des commrciaux</h1>
+                    <p>
+                        @if ($canManageCompanies)
+                            Cette page vous permet d attribuer la societe de chaque employe.
+                        @else
+                            Cette page affiche tous les utilisateurs et la societe a laquelle chacun appartient.
+                        @endif
+                    </p>
                 </div>
             </div>
 
+            @if (session('status'))
+                <div class="status-box">{{ session('status') }}</div>
+            @endif
+
             <div class="stats-strip">
                 <div class="stat-card">
-                    <strong>{{ $users->count() }}</strong>
-                    <span>Total commerciaux</span>
-                </div>
-                <div class="stat-card">
                     <strong>{{ $users->where('role', 'employee')->count() }}</strong>
-                    <span>Employes</span>
+                    <span>Total commerciaux</span>
                 </div>
                 <div class="stat-card">
                     <strong>{{ $users->filter(fn ($user) => strtolower((string) $user->role) === 'dg')->count() }}</strong>
@@ -185,32 +233,86 @@
                             <th>Prenom</th>
                             <th>Email</th>
                             <th>Telephone</th>
+                            <th>Societe</th>
                             <th>Role</th>
+                            @if ($canManageCompanies)
+                                <th>Action</th>
+                            @endif
                         </tr>
                     </thead>
+                    @php
+                        $dgs = $users->filter(fn ($user) => strtolower((string) $user->role) === 'dg')->values();
+                        $employees = $users->filter(fn ($user) => strtolower((string) $user->role) === 'employee')->values();
+                        $visibleUsersCount = $dgs->count() + $employees->count();
+                    @endphp
+
                     <tbody>
-                        @forelse ($users as $user)
-                            @php
-                                $nameParts = preg_split('/\s+/', trim((string) $user->name)) ?: [];
-                                $nom = $nameParts[0] ?? '-';
-                                $prenom = trim(implode(' ', array_slice($nameParts, 1))) ?: '-';
-                            @endphp
+                        @if ($visibleUsersCount > 0)
+                            @foreach ($dgs as $user)
+                                @php
+                                    $nameParts = preg_split('/\s+/', trim((string) $user->name)) ?: [];
+                                    $nom = $nameParts[0] ?? '-';
+                                    $prenom = trim(implode(' ', array_slice($nameParts, 1))) ?: '-';
+                                @endphp
+                                <tr>
+                                    <td class="name-cell">{{ $nom }}</td>
+                                    <td>{{ $prenom }}</td>
+                                    <td>{{ $user->email }}</td>
+                                    <td>{{ $user->phone ?: '-' }}</td>
+                                    <td>{{ $user->companyLabel() }}</td>
+                                    <td>
+                                        <span class="badge employee">
+                                            {{ $user->roleLabel() }}
+                                        </span>
+                                    </td>
+                                    @if ($canManageCompanies)
+                                        <td>
+                                            <span class="muted-text">Non modifiable</span>
+                                        </td>
+                                    @endif
+                                </tr>
+                            @endforeach
+
+                            @foreach ($employees as $user)
+                                @php
+                                    $nameParts = preg_split('/\s+/', trim((string) $user->name)) ?: [];
+                                    $nom = $nameParts[0] ?? '-';
+                                    $prenom = trim(implode(' ', array_slice($nameParts, 1))) ?: '-';
+                                @endphp
+                                <tr>
+                                    <td class="name-cell">{{ $nom }}</td>
+                                    <td>{{ $prenom }}</td>
+                                    <td>{{ $user->email }}</td>
+                                    <td>{{ $user->phone ?: '-' }}</td>
+                                    <td>{{ $user->companyLabel() }}</td>
+                                    <td>
+                                        <span class="badge employee">
+                                            {{ $user->roleLabel() }}
+                                        </span>
+                                    </td>
+                                    @if ($canManageCompanies)
+                                        <td>
+                                            @if ($user->isEmployee())
+                                                <form class="company-form" action="{{ route('admin.users.company.update', $user) }}" method="POST">
+                                                    @csrf
+                                                    <select class="company-select" name="company">
+                                                        <option value="invest_market" {{ $user->normalizedCompany() === 'invest_market' ? 'selected' : '' }}>Invest Market</option>
+                                                        <option value="rmgc" {{ $user->normalizedCompany() === 'rmgc' ? 'selected' : '' }}>RMGC</option>
+                                                    </select>
+                                                    <button class="save-btn" type="submit">Enregistrer</button>
+                                                </form>
+                                            @else
+                                                <span class="muted-text">Non modifiable</span>
+                                            @endif
+                                        </td>
+                                    @endif
+                                </tr>
+                            @endforeach
+                        @else
                             <tr>
-                                <td class="name-cell">{{ $nom }}</td>
-                                <td>{{ $prenom }}</td>
-                                <td>{{ $user->email }}</td>
-                                <td>{{ $user->phone ?: '-' }}</td>
-                                <td>
-                                    <span class="badge {{ $user->isAdmin() ? 'admin' : 'employee' }}">
-                                        {{ $user->roleLabel() }}
-                                    </span>
-                                </td>
+                                <td colspan="{{ $canManageCompanies ? 7 : 6 }}" class="empty-state">Aucun utilisateur trouve.</td>
                             </tr>
-                        @empty
-                            <tr>
-                                <td colspan="5" class="empty-state">Aucun utilisateur trouve.</td>
-                            </tr>
-                        @endforelse
+                        @endif
                     </tbody>
                 </table>
             </div>

@@ -189,6 +189,29 @@
             color: #0f172a;
         }
 
+        .status-chip {
+            display: inline-flex;
+            align-items: center;
+            margin-left: 10px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+            background: #e2e8f0;
+            color: #334155;
+            white-space: nowrap;
+        }
+
+        .status-chip.pending {
+            background: rgba(245, 158, 11, 0.16);
+            color: #92400e;
+        }
+
+        .status-chip.rejected {
+            background: rgba(239, 68, 68, 0.14);
+            color: #991b1b;
+        }
+
         .date-cell {
             white-space: nowrap;
             color: #334155;
@@ -367,10 +390,12 @@
                         @forelse ($fiches as $fiche)
                             @php
                                 $hasCompleteDocuments = $fiche->hasCompleteClientDocuments();
+                                $canModifyFiche = auth()->user()->canModifyFiche($fiche);
                             @endphp
                             <tr class="summary-row" data-search-row data-company="{{ Str::lower($fiche->nom_entreprise) }}">
                                 <td class="company">
                                     <span>{{ $fiche->nom_entreprise }}</span>
+                                    <span class="status-chip">{{ $fiche->user?->companyLabel() ?? 'Invest Market' }}</span>
                                     <span class="expand-indicator" aria-hidden="true">+</span>
                                 </td>
                                 <td class="date-cell">{{ $fiche->created_at?->format('Y-m-d H:i') }}</td>
@@ -387,10 +412,12 @@
                                     <div class="actions-cell">
                                         <a class="details-link" href="{{ route('fiche-propose.show', $fiche) }}">Details</a>
                                         <a class="history-link" href="{{ route('fiche-propose.history', $fiche) }}">Historique</a>
-                                        @unless ($hasCompleteDocuments)
+                                        @if ($canModifyFiche && ! $hasCompleteDocuments)
                                             <a class="doc-link" href="{{ route('fiche-client.documents.edit', $fiche) }}">Documents</a>
-                                        @endunless
-                                        <a class="file-link" href="{{ route('fiche-propose.resume.create', $fiche) }}">Next</a>
+                                        @endif
+                                        @if ($canModifyFiche)
+                                            <a class="file-link" href="{{ route('fiche-propose.resume.create', $fiche) }}">Next</a>
+                                        @endif
                                     </div>
                                 </td>
                             </tr>
@@ -413,10 +440,12 @@
                                             <div class="actions-cell">
                                                 <a class="details-link" href="{{ route('fiche-propose.show', $fiche) }}">Details</a>
                                                 <a class="history-link" href="{{ route('fiche-propose.history', $fiche) }}">Historique</a>
-                                                @unless ($hasCompleteDocuments)
+                                                @if ($canModifyFiche && ! $hasCompleteDocuments)
                                                     <a class="doc-link" href="{{ route('fiche-client.documents.edit', $fiche) }}">Documents</a>
-                                                @endunless
-                                                <a class="file-link" href="{{ route('fiche-propose.resume.create', $fiche) }}">Next</a>
+                                                @endif
+                                                @if ($canModifyFiche)
+                                                    <a class="file-link" href="{{ route('fiche-propose.resume.create', $fiche) }}">Next</a>
+                                                @endif
                                             </div>
                                         </div>
                                     </div>

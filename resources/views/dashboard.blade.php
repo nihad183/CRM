@@ -412,10 +412,6 @@
                     <span>Resume aujourd'hui</span>
                     <strong id="resumes-count">{{ $resumesTodayCount }}</strong>
                 </div>
-                <div class="stat-box">
-                    <span>Conversions ce mois</span>
-                    <strong id="converted-count">{{ $convertedThisMonthCount }}</strong>
-                </div>
             </div>
         </div>
     </div>
@@ -430,7 +426,6 @@
             const prospectsCount = document.getElementById('prospects-count');
             const clientsCount = document.getElementById('clients-count');
             const resumesCount = document.getElementById('resumes-count');
-            const convertedCount = document.getElementById('converted-count');
 
             const width = 1000;
             const height = 420;
@@ -573,7 +568,6 @@
                     prospectsCount.textContent = data.prospectsCount ?? 0;
                     clientsCount.textContent = data.clientsCount ?? 0;
                     resumesCount.textContent = data.resumesTodayCount ?? 0;
-                    convertedCount.textContent = data.convertedThisMonthCount ?? 0;
 
                     if (!Array.isArray(data.months) || !data.months.length) {
                         showEmptyState('Aucune donnee disponible pour afficher le graphique.');

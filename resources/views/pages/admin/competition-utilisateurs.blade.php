@@ -80,6 +80,34 @@
             box-shadow: 0 16px 30px rgba(20, 184, 166, 0.18);
         }
 
+        .company-switch {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .company-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 150px;
+            padding: 12px 16px;
+            border-radius: 999px;
+            text-decoration: none;
+            font-weight: 700;
+            border: 1px solid #cbd5e1;
+            background: #ffffff;
+            color: #334155;
+        }
+
+        .company-pill.is-active {
+            background: linear-gradient(135deg, #0f766e, #14b8a6);
+            color: #ffffff;
+            border-color: transparent;
+            box-shadow: 0 16px 30px rgba(20, 184, 166, 0.18);
+        }
+
         .page-head h1 {
             margin: 0;
             padding-left: 16px;
@@ -334,9 +362,9 @@
             margin: 0 0 18px;
             padding: 14px 16px;
             border-radius: 16px;
-            background: rgba(245, 158, 11, 0.08);
+            background: rgba(233, 232, 231, 0.08);
             border: 1px solid rgba(245, 159, 11, 0.199);
-            color: #220f05;
+            color: #050505;
             font-size: 12px;
         }
 
@@ -362,9 +390,11 @@
             }
 
             .filter-form,
+            .company-switch,
             .filter-field,
             .filter-field select,
-            .filter-btn {
+            .filter-btn,
+            .company-pill {
                 width: 100%;
             }
 
@@ -505,8 +535,27 @@
             <div class="page-head">
                 <div>
                     <h1>Ranking Classement</h1>
+                    @if ($canSwitchCompany)
+                        <p class="rule-note" style="margin: 12px 0 0;">Classement affiche: {{ $selectedCompanyLabel }}</p>
+                    @endif
                 </div>
                 <form class="filter-form" method="GET" action="{{ route('admin.competition-utilisateurs') }}">
+                    @if ($canSwitchCompany)
+                        <div class="company-switch">
+                            <a
+                                class="company-pill {{ $selectedCompany === 'invest_market' ? 'is-active' : '' }}"
+                                href="{{ route('admin.competition-utilisateurs', ['year' => $selectedYear, 'company' => 'invest_market']) }}"
+                            >
+                                Invest Market
+                            </a>
+                            <a
+                                class="company-pill {{ $selectedCompany === 'rmgc' ? 'is-active' : '' }}"
+                                href="{{ route('admin.competition-utilisateurs', ['year' => $selectedYear, 'company' => 'rmgc']) }}"
+                            >
+                                RMGC
+                            </a>
+                        </div>
+                    @endif
                     <div class="filter-field">
                         <label for="year">Filtre annee</label>
                         <select id="year" name="year">
@@ -517,6 +566,7 @@
                             @endforeach
                         </select>
                     </div>
+                    <input type="hidden" name="company" value="{{ $selectedCompany }}">
                     <button class="filter-btn" type="submit">Filtrer</button>
                 </form>
             </div>

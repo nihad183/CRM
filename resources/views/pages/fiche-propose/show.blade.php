@@ -2,6 +2,7 @@
 
 @section('content')
     @php
+        $canModifyFiche = auth()->user()->canModifyFiche($fiche);
         $resumeEntries = $fiche->resumes
             ->map(function ($resume) use ($fiche) {
                 return [
@@ -506,6 +507,10 @@
                 <div class="status-box">{{ session('status') }}</div>
             @endif
 
+            @unless ($canModifyFiche)
+                <div class="status-box">هذه البطاقة في وضع العرض فقط. يمكنك رؤية ملفات الشركة الاخرى لكن لا يمكنك تعديلها.</div>
+            @endunless
+
             @if ($fiche->client_conversion_status === 'pending')
                 <div class="status-box">Cette fiche prospect attend la validation d un administrateur pour devenir fiche client.</div>
             @elseif ($fiche->client_conversion_status === 'rejected')
@@ -561,6 +566,16 @@
                         <div class="info-block">
                             <span class="info-label">Date creation:</span>
                             <div class="info-value">{{ $fiche->created_at?->format('Y-m-d H:i') }}</div>
+                        </div>
+
+                        <div class="info-block">
+                            <span class="info-label">Societe:</span>
+                            <div class="info-value">{{ $fiche->user?->companyLabel() ?? 'Invest Market' }}</div>
+                        </div>
+
+                        <div class="info-block">
+                            <span class="info-label">Cree par:</span>
+                            <div class="info-value">{{ $fiche->user?->name ?: '-' }}</div>
                         </div>
 
                         @if ($fiche->contract_amount !== null || $fiche->contract_signed_at || $fiche->contractUser || $fiche->piece_jointe_path)

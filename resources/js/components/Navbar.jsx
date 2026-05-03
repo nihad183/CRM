@@ -15,6 +15,7 @@ export default function Navbar({ userRole = "employee" }) {
   const currentPath = window.location.pathname;
   const normalizedRole = String(userRole || "employee").trim().toLowerCase();
   const isAdmin = ["admin", "dg"].includes(normalizedRole);
+  const canManageUsers = ["admin", "dg"].includes(normalizedRole);
 
   return (
     <div className="fixed top-8 left-0 right-0 flex justify-center z-50">
@@ -50,7 +51,7 @@ export default function Navbar({ userRole = "employee" }) {
         >
           <FileText color={currentPath === "/fiche-propose" ? "#2563eb" : "#000000"} size={20} />
         </DockItem>
-        {isAdmin ? (
+        {canManageUsers ? (
           <DockItem
             label="commarciaux"
             isActive={currentPath === "/admin/liste-de-comarecen"}

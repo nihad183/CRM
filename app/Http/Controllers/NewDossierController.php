@@ -12,6 +12,11 @@ use Illuminate\Support\Str;
 
 class NewDossierController extends Controller
 {
+    private function normalizeCompany(?string $company): string
+    {
+        return User::normalizeCompanyValue($company);
+    }
+
     private function ensureAuthenticated(Request $request): void
     {
         abort_unless($request->user() !== null, 403);
@@ -20,11 +25,34 @@ class NewDossierController extends Controller
     private function ensureCanAccessFiche(Request $request, FichePropose $fichePropose): void
     {
         $this->ensureAuthenticated($request);
+        abort_unless($request->user()?->canAccessCommercialFeatures(), 403);
+    }
+
+    private function ensureCanModifyFiche(Request $request, FichePropose $fichePropose): void
+    {
+        $this->ensureCanAccessFiche($request, $fichePropose);
+        abort_unless($request->user()?->canModifyFiche($fichePropose), 403);
+    }
+
+    private function applyVisibleFicheScope($query, ?User $user)
+    {
+        if ($user?->isAdmin()) {
+            return $query;
+        }
+
+        return $query->whereHas('user', function ($userQuery) {
+            $userQuery->whereIn('role', ['employee', 'admin', 'dg', 'DG']);
+        });
     }
 
     private function ensureAdmin(Request $request): void
     {
         abort_unless($request->user()?->isAdmin(), 403);
+    }
+
+    private function ensureStrictAdmin(Request $request): void
+    {
+        abort_unless(strtolower((string) $request->user()?->role) === 'admin', 403);
     }
 
     private function ensureEmployeeCommercial(Request $request): void
@@ -80,7 +108,8 @@ class NewDossierController extends Controller
     {
         $search = trim((string) $request->query('search', ''));
 
-        $fiches = FichePropose::query()
+        $fiches = $this->applyVisibleFicheScope(FichePropose::query(), $request->user())
+            ->with('user')
             ->where(function ($query) {
                 $query->where('is_fiche_client', false)
                     ->orWhereNull('is_fiche_client');
@@ -101,7 +130,8 @@ class NewDossierController extends Controller
     {
         $search = trim((string) $request->query('search', ''));
 
-        $fiches = FichePropose::query()
+        $fiches = $this->applyVisibleFicheScope(FichePropose::query(), $request->user())
+            ->with('user')
             ->where('is_fiche_client', true)
             ->when($search !== '', function ($query) use ($search) {
                 $query->where('nom_entreprise', 'like', '%' . $search . '%');
@@ -187,7 +217,7 @@ class NewDossierController extends Controller
 
     public function createFicheProposeResume(Request $request, FichePropose $fichePropose)
     {
-        $this->ensureCanAccessFiche($request, $fichePropose);
+        $this->ensureCanModifyFiche($request, $fichePropose);
 
         return view('pages.fiche-propose.resume-create', [
             'fiche' => $fichePropose,
@@ -196,7 +226,7 @@ class NewDossierController extends Controller
 
     public function createFicheClientDocument(Request $request, FichePropose $fichePropose)
     {
-        $this->ensureCanAccessFiche($request, $fichePropose);
+        $this->ensureCanModifyFiche($request, $fichePropose);
 
         return view('pages.fiche-client.document-create', [
             'fiche' => $fichePropose,
@@ -205,7 +235,7 @@ class NewDossierController extends Controller
 
     public function editFicheClientDocuments(Request $request, FichePropose $fichePropose)
     {
-        $this->ensureCanAccessFiche($request, $fichePropose);
+        $this->ensureCanModifyFiche($request, $fichePropose);
         abort_unless($fichePropose->is_fiche_client, 404);
 
         return view('pages.fiche-client.documents', [
@@ -215,7 +245,7 @@ class NewDossierController extends Controller
 
     public function storeFicheClientDocument(Request $request, FichePropose $fichePropose)
     {
-        $this->ensureCanAccessFiche($request, $fichePropose);
+        $this->ensureCanModifyFiche($request, $fichePropose);
         $this->ensureEmployeeCommercial($request);
 
         $request->merge([
@@ -271,7 +301,7 @@ class NewDossierController extends Controller
 
     public function updateFicheClientDocuments(Request $request, FichePropose $fichePropose)
     {
-        $this->ensureCanAccessFiche($request, $fichePropose);
+        $this->ensureCanModifyFiche($request, $fichePropose);
         abort_unless($fichePropose->is_fiche_client, 404);
 
         $validated = $request->validate([
@@ -345,7 +375,7 @@ class NewDossierController extends Controller
 
     public function storeFicheProposeResume(Request $request, FichePropose $fichePropose)
     {
-        $this->ensureCanAccessFiche($request, $fichePropose);
+        $this->ensureCanModifyFiche($request, $fichePropose);
 
         $validated = $request->validate([
             'titre' => ['required', 'string', 'max:255'],
@@ -493,22 +523,45 @@ class NewDossierController extends Controller
         $this->ensureAdmin($request);
 
         $users = User::query()
-            ->select(['id', 'name', 'email', 'phone', 'role', 'created_at'])
-            ->whereIn('role', ['employee', 'dg', 'DG'])
+            ->select(['id', 'name', 'email', 'phone', 'role', 'company', 'created_at'])
+            ->whereIn('role', ['employee', 'admin', 'dg', 'DG'])
             ->orderBy('name')
             ->get();
 
         return view('pages.admin.liste-de-comarecen', [
             'users' => $users,
+            'canManageCompanies' => strtolower((string) $request->user()?->role) === 'admin',
         ]);
+    }
+
+    public function updateUserCompany(Request $request, User $user)
+    {
+        $this->ensureStrictAdmin($request);
+
+        abort_unless($user->isEmployee(), 404);
+
+        $validated = $request->validate([
+            'company' => ['required', 'in:invest_market,rmgc'],
+        ]);
+
+        $user->update([
+            'company' => $validated['company'],
+        ]);
+
+        return redirect()
+            ->route('admin.liste-de-comarecen')
+            ->with('status', 'La societe du commercial a ete mise a jour avec succes.');
     }
 
     public function indexAdminCompetition(Request $request)
     {
         abort_unless($request->user() !== null, 403);
 
+        $viewer = $request->user();
         $defaultYear = now()->year;
         $selectedYear = (int) $request->integer('year', $defaultYear);
+        $requestedCompany = $this->normalizeCompany($request->query('company'));
+        $selectedCompany = $viewer->isAdmin() ? $requestedCompany : $viewer->normalizedCompany();
 
         $availableYears = FichePropose::query()
             ->whereNotNull('contract_signed_at')
@@ -527,8 +580,9 @@ class NewDossierController extends Controller
         }
 
         $users = User::query()
-            ->select(['id', 'name', 'role'])
+            ->select(['id', 'name', 'role', 'company'])
             ->where('role', 'employee')
+            ->where('company', $selectedCompany)
             ->withCount([
                 'signedContracts as yearly_signed_contracts_count' => function ($query) use ($selectedYear) {
                     $query->where('is_fiche_client', true)
@@ -563,6 +617,9 @@ class NewDossierController extends Controller
             'currentYearLabel' => $selectedYear,
             'selectedYear' => $selectedYear,
             'availableYears' => $availableYears,
+            'selectedCompany' => $selectedCompany,
+            'selectedCompanyLabel' => $selectedCompany === 'rmgc' ? 'RMGC' : 'Invest Market',
+            'canSwitchCompany' => $viewer->isAdmin(),
         ]);
     }
 

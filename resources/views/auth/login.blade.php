@@ -146,6 +146,25 @@
             color: var(--text-main);
             text-decoration: none;
             font-weight: 600;
+        }.register-floating {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: 20px;
+            height: 20px;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            font-size: 20px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .register-floating:hover {
+            transform: scale(1.1);
         }
 
 
@@ -195,7 +214,13 @@
 
         <button type="submit">Se connecter</button>
 
-        <p class="footer-text">Vous n'avez pas de compte ? <a href="{{ route('register') }}">S'inscrire</a></p>
+        <p class="footer-text">
+            <a class="register-floating" href="{{ route('register') }}" title="Créer un compte">
+                <i class="fa-solid fa-user-plus"></i>
+            </a>
+        </p>
+
+       
     </form>
 </body>
 </html>

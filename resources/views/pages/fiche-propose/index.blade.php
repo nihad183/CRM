@@ -384,9 +384,13 @@
                     </thead>
                     <tbody data-search-body>
                         @forelse ($fiches as $fiche)
+                            @php
+                                $canModifyFiche = auth()->user()->canModifyFiche($fiche);
+                            @endphp
                             <tr class="summary-row" data-search-row data-company="{{ Str::lower($fiche->nom_entreprise) }}">
                                 <td class="company">
                                     <span>{{ $fiche->nom_entreprise }}</span>
+                                    <span class="status-chip">{{ $fiche->user?->companyLabel() ?? 'Invest Market' }}</span>
                                     @if ($fiche->client_conversion_status === 'pending')
                                         <span class="status-chip pending">En attente admin</span>
                                     @elseif ($fiche->client_conversion_status === 'rejected')
@@ -399,8 +403,10 @@
                                     <div class="actions-cell">
                                         <a class="details-link" href="{{ route('fiche-propose.show', $fiche) }}">Details</a>
                                         <a class="history-link" href="{{ route('fiche-propose.history', $fiche) }}">Historique</a>
-                                        <a class="next-link" href="{{ route('fiche-propose.resume.create', $fiche) }}">Next</a>
-                                        <a class="client-link" href="{{ route('fiche-propose.fiche-client.create', $fiche) }}">Passer en fiche client</a>
+                                        @if ($canModifyFiche)
+                                            <a class="next-link" href="{{ route('fiche-propose.resume.create', $fiche) }}">Next</a>
+                                            <a class="client-link" href="{{ route('fiche-propose.fiche-client.create', $fiche) }}">Passer en fiche client</a>
+                                        @endif
                                     </div>
                                 </td>
                             </tr>
@@ -412,8 +418,10 @@
                                             <div class="actions-cell">
                                                 <a class="details-link" href="{{ route('fiche-propose.show', $fiche) }}">Details</a>
                                                 <a class="history-link" href="{{ route('fiche-propose.history', $fiche) }}">Historique</a>
-                                                <a class="next-link" href="{{ route('fiche-propose.resume.create', $fiche) }}">Next</a>
-                                                <a class="client-link" href="{{ route('fiche-propose.fiche-client.create', $fiche) }}">Passer en fiche client</a>
+                                                @if ($canModifyFiche)
+                                                    <a class="next-link" href="{{ route('fiche-propose.resume.create', $fiche) }}">Next</a>
+                                                    <a class="client-link" href="{{ route('fiche-propose.fiche-client.create', $fiche) }}">Passer en fiche client</a>
+                                                @endif
                                             </div>
                                         </div>
                                     </div>

@@ -17,12 +17,12 @@ Route::middleware('guest')->group(function () {
 
     Route::get('/', [AuthController::class, 'showLoginForm'])->name('login');
 
-    Route::get('/register', [AuthController::class, 'showRegisterForm'])->name('register');
-
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1')->name('login.submit');
 
+    Route::get('/register', [AuthController::class, 'showRegisterForm'])->name('register');
     Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:5,1')->name('register.submit');
 });
+
 
 
 /*
@@ -85,10 +85,12 @@ Route::middleware('auth')->group(function () {
     | ADMIN
     |---------------------------
     */
+    Route::get('/admin/competition-utilisateurs', [NewDossierController::class, 'indexAdminCompetition'])->name('admin.competition-utilisateurs');
+
     Route::prefix('admin')->middleware('admin')->group(function () {
         Route::get('/client-conversion-requests', [NewDossierController::class, 'indexClientConversionRequests'])->name('admin.client-conversion-requests');
         Route::get('/liste-de-comarecen', [NewDossierController::class, 'indexAdminUsers'])->name('admin.liste-de-comarecen');
-        Route::get('/competition-utilisateurs', [NewDossierController::class, 'indexAdminCompetition'])->name('admin.competition-utilisateurs');
+        Route::post('/liste-de-comarecen/{user}/company', [NewDossierController::class, 'updateUserCompany'])->middleware('throttle:10,1')->name('admin.users.company.update');
         Route::post('/client-conversion-requests/{fichePropose}/approve', [NewDossierController::class, 'approveClientConversionRequest'])->middleware('throttle:10,1')->name('admin.client-conversion-requests.approve');
         Route::post('/client-conversion-requests/{fichePropose}/reject', [NewDossierController::class, 'rejectClientConversionRequest'])->middleware('throttle:10,1')->name('admin.client-conversion-requests.reject');
     });

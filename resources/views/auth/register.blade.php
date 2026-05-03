@@ -111,7 +111,8 @@
             color: #e2e8f0;
         }
 
-        input {
+        input,
+        select {
             width: 100%;
             padding: 14px 16px;
             border-radius: 14px;
@@ -126,9 +127,14 @@
             color: rgba(255, 255, 255, 0.342);
         }
 
-        input:focus {
+        input:focus,
+        select:focus {
             border-color: rgba(255, 255, 255, 0.42);
             background: rgba(255, 255, 255, 0.18);
+        }
+
+        select option {
+            color: #0f172a;
         }
 
         button {
