@@ -223,6 +223,10 @@
                     <strong>{{ $users->filter(fn ($user) => strtolower((string) $user->role) === 'dg')->count() }}</strong>
                     <span>DG</span>
                 </div>
+                <div class="stat-card">
+                    <strong>{{ $users->filter(fn ($user) => $user->isCompliance())->count() }}</strong>
+                    <span>Conformite</span>
+                </div>
             </div>
 
             <div class="table-wrap">
@@ -242,8 +246,9 @@
                     </thead>
                     @php
                         $dgs = $users->filter(fn ($user) => strtolower((string) $user->role) === 'dg')->values();
+                        $complianceUsers = $users->filter(fn ($user) => $user->isCompliance())->values();
                         $employees = $users->filter(fn ($user) => strtolower((string) $user->role) === 'employee')->values();
-                        $visibleUsersCount = $dgs->count() + $employees->count();
+                        $visibleUsersCount = $dgs->count() + $complianceUsers->count() + $employees->count();
                     @endphp
 
                     <tbody>
@@ -262,6 +267,31 @@
                                     <td>{{ $user->companyLabel() }}</td>
                                     <td>
                                         <span class="badge employee">
+                                            {{ $user->roleLabel() }}
+                                        </span>
+                                    </td>
+                                    @if ($canManageCompanies)
+                                        <td>
+                                            <span class="muted-text">Non modifiable</span>
+                                        </td>
+                                    @endif
+                                </tr>
+                            @endforeach
+
+                            @foreach ($complianceUsers as $user)
+                                @php
+                                    $nameParts = preg_split('/\s+/', trim((string) $user->name)) ?: [];
+                                    $nom = $nameParts[0] ?? '-';
+                                    $prenom = trim(implode(' ', array_slice($nameParts, 1))) ?: '-';
+                                @endphp
+                                <tr>
+                                    <td class="name-cell">{{ $nom }}</td>
+                                    <td>{{ $prenom }}</td>
+                                    <td>{{ $user->email }}</td>
+                                    <td>{{ $user->phone ?: '-' }}</td>
+                                    <td>{{ $user->companyLabel() }}</td>
+                                    <td>
+                                        <span class="badge admin">
                                             {{ $user->roleLabel() }}
                                         </span>
                                     </td>

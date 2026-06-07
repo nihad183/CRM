@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ComplianceController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\NewDossierController;
 use App\Http\Controllers\ProfileController;
@@ -68,6 +69,10 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/fiche-propose/{fichePropose}/resume/{resume}/print', [NewDossierController::class, 'printFicheProposeResume'])->name('fiche-propose.resume.print');
     Route::get('/fiche-propose/{fichePropose}/resume/{resume}/pdf', [NewDossierController::class, 'downloadFicheProposeResumePdf'])->name('fiche-propose.resume.pdf');
+
+    Route::get('/compliance', [ComplianceController::class, 'index'])->name('compliance.index');
+    Route::post('/compliance/upload', [ComplianceController::class, 'upload'])->middleware('throttle:6,1')->name('compliance.upload');
+    Route::post('/compliance/matches/{match}/decision', [ComplianceController::class, 'decide'])->middleware('throttle:20,1')->name('compliance.matches.decision');
 
 
     /*

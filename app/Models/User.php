@@ -58,12 +58,21 @@ class User extends Authenticatable
 
     public function isAdmin(): bool
     {
-        return in_array(strtolower((string) $this->role), ['admin', 'dg'], true);
+        return in_array($this->normalizedRole(), ['admin', 'dg'], true);
     }
 
     public function isEmployee(): bool
     {
-        return strtolower((string) $this->role) === 'employee';
+        return $this->normalizedRole() === 'employee';
+    }
+
+    public function isCompliance(): bool
+    {
+        return in_array($this->normalizedRole(), [
+            'responsable_conformite',
+            'charge_conformite',
+            'analyse_conformite',
+        ], true);
     }
 
     public function canAccessCommercialFeatures(): bool
@@ -71,13 +80,21 @@ class User extends Authenticatable
         return $this->isAdmin() || $this->isEmployee();
     }
 
+    public function canAccessComplianceFeatures(): bool
+    {
+        return $this->normalizedRole() === 'admin' || $this->isCompliance();
+    }
+
     public function roleLabel(): string
     {
-        $role = strtolower((string) $this->role);
+        $role = $this->normalizedRole();
 
         return match ($role) {
             'admin' => 'Admin',
             'dg' => 'DG',
+            'responsable_conformite' => 'Responsable conformite',
+            'charge_conformite' => 'Charge conformite',
+            'analyse_conformite' => 'Analyse conformite',
             default => 'Employee',
         };
     }
@@ -101,6 +118,11 @@ class User extends Authenticatable
     public function belongsToCompany(string $company): bool
     {
         return $this->normalizedCompany() === self::normalizeCompanyValue($company);
+    }
+
+    public function normalizedRole(): string
+    {
+        return str_replace([' ', '-'], '_', strtolower(trim((string) $this->role)));
     }
 
     public function canModifyFiche(FichePropose $fichePropose): bool

@@ -11,6 +11,9 @@
             'poste' => '',
         ],
     ]);
+    $legalRepresentative = old('legal_representative', []);
+    $authorizedSignatories = old('authorized_signatories', []);
+    $shareholders = old('shareholders', []);
 @endphp
 
 @section('content')
@@ -268,6 +271,12 @@
             border-left: 3px solid #14b8a6;
         }
 
+        .section-note {
+            margin: -8px 0 18px;
+            color: #64748b;
+            line-height: 1.6;
+        }
+
         .remove-btn {
             padding: 10px 14px;
             background: rgba(239, 68, 68, 0.15);
@@ -416,6 +425,68 @@
                     </div>
 
 
+                    <div class="contacts-head">
+                        <h2>Compliance</h2>
+                    </div>
+                    <p class="section-note">Ces informations sont filtrees automatiquement avec les listes importees par le service conformite.</p>
+
+                    <div class="contact-card">
+                        <div class="contact-top">
+                            <h3>Representant legal</h3>
+                        </div>
+
+                        <div class="field-grid">
+                            @include('pages.partials.compliance-person-fields', [
+                                'prefix' => 'legal_representative',
+                                'person' => $legalRepresentative,
+                            ])
+                        </div>
+                    </div>
+
+                    <div class="contacts-head">
+                        <h2>Mandataires signature</h2>
+                        <button class="ghost-btn" type="button" id="add-signatory-btn">Ajouter</button>
+                    </div>
+
+                    <div id="signatories-wrapper">
+                        @foreach ($authorizedSignatories as $index => $person)
+                            <div class="contact-card" data-person-card>
+                                <div class="contact-top">
+                                    <h3><span data-person-label>Mandataire</span> <span data-person-number>{{ $index + 1 }}</span></h3>
+                                    <button class="remove-btn" type="button" data-remove-person>Supprimer</button>
+                                </div>
+                                <div class="field-grid">
+                                    @include('pages.partials.compliance-person-fields', [
+                                        'prefix' => "authorized_signatories[$index]",
+                                        'person' => $person,
+                                    ])
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+
+                    <div class="contacts-head">
+                        <h2>Actionnaires</h2>
+                        <button class="ghost-btn" type="button" id="add-shareholder-btn">Ajouter</button>
+                    </div>
+
+                    <div id="shareholders-wrapper">
+                        @foreach ($shareholders as $index => $person)
+                            <div class="contact-card" data-person-card>
+                                <div class="contact-top">
+                                    <h3><span data-person-label>Actionnaire</span> <span data-person-number>{{ $index + 1 }}</span></h3>
+                                    <button class="remove-btn" type="button" data-remove-person>Supprimer</button>
+                                </div>
+                                <div class="field-grid">
+                                    @include('pages.partials.compliance-person-fields', [
+                                        'prefix' => "shareholders[$index]",
+                                        'person' => $person,
+                                    ])
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+
                     <div id="fiche-client-extra" class="form-panel {{ $selectedType === 'fiche-client' ? 'is-visible' : '' }}">
                         <h2 class="section-title">Documents fiche client</h2>
 
@@ -536,6 +607,19 @@
         </div>
     </template>
 
+    <template id="person-template">
+        <div class="contact-card" data-person-card>
+            <div class="contact-top">
+                <h3><span data-person-label></span> <span data-person-number></span></h3>
+                <button class="remove-btn" type="button" data-remove-person>Supprimer</button>
+            </div>
+
+            <div class="field-grid">
+                @include('pages.partials.compliance-person-template-fields')
+            </div>
+        </div>
+    </template>
+
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const typeInputs = Array.from(document.querySelectorAll('input[name="dossier_type"]'));
@@ -545,6 +629,11 @@
             const contactsWrapper = document.getElementById('contacts-wrapper');
             const addContactButton = document.getElementById('add-contact-btn');
             const contactTemplate = document.getElementById('contact-template');
+            const personTemplate = document.getElementById('person-template');
+            const signatoriesWrapper = document.getElementById('signatories-wrapper');
+            const shareholdersWrapper = document.getElementById('shareholders-wrapper');
+            const addSignatoryButton = document.getElementById('add-signatory-btn');
+            const addShareholderButton = document.getElementById('add-shareholder-btn');
 
             function togglePanels() {
                 const selected = document.querySelector('input[name="dossier_type"]:checked')?.value;
@@ -601,11 +690,39 @@
                 updateContactIndexes();
             }
 
+            function updatePeopleIndexes(wrapper, prefix, label) {
+                const cards = Array.from(wrapper.querySelectorAll('[data-person-card]'));
+
+                cards.forEach((card, index) => {
+                    card.querySelector('[data-person-label]').textContent = label;
+                    card.querySelector('[data-person-number]').textContent = index + 1;
+                    card.querySelectorAll('input').forEach((input) => {
+                        const field = input.getAttribute('data-name') || input.name.match(/\[(\w+)\]$/)?.[1];
+
+                        if (field) {
+                            input.name = `${prefix}[${index}][${field}]`;
+                        }
+                    });
+                });
+            }
+
+            function addPerson(wrapper, prefix, label) {
+                const fragment = personTemplate.content.cloneNode(true);
+                wrapper.appendChild(fragment);
+                updatePeopleIndexes(wrapper, prefix, label);
+            }
+
             typeInputs.forEach((input) => {
                 input.addEventListener('change', togglePanels);
             });
 
             addContactButton.addEventListener('click', addContact);
+            addSignatoryButton.addEventListener('click', function () {
+                addPerson(signatoriesWrapper, 'authorized_signatories', 'Mandataire');
+            });
+            addShareholderButton.addEventListener('click', function () {
+                addPerson(shareholdersWrapper, 'shareholders', 'Actionnaire');
+            });
 
             contactsWrapper.addEventListener('click', function (event) {
                 const removeButton = event.target.closest('[data-remove-contact]');
@@ -624,9 +741,25 @@
                 updateContactIndexes();
             });
 
+            [signatoriesWrapper, shareholdersWrapper].forEach((wrapper) => {
+                wrapper.addEventListener('click', function (event) {
+                    const removeButton = event.target.closest('[data-remove-person]');
+
+                    if (!removeButton) {
+                        return;
+                    }
+
+                    removeButton.closest('[data-person-card]')?.remove();
+                    updatePeopleIndexes(signatoriesWrapper, 'authorized_signatories', 'Mandataire');
+                    updatePeopleIndexes(shareholdersWrapper, 'shareholders', 'Actionnaire');
+                });
+            });
+
             togglePanels();
             bindPhoneValidation(contactsWrapper);
             updateContactIndexes();
+            updatePeopleIndexes(signatoriesWrapper, 'authorized_signatories', 'Mandataire');
+            updatePeopleIndexes(shareholdersWrapper, 'shareholders', 'Actionnaire');
         });
     </script>
 @endsection

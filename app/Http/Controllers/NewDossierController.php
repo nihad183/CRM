@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\FichePropose;
 use App\Models\FicheProposeResume;
 use App\Models\User;
+use App\Services\ComplianceService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -25,7 +26,10 @@ class NewDossierController extends Controller
     private function ensureCanAccessFiche(Request $request, FichePropose $fichePropose): void
     {
         $this->ensureAuthenticated($request);
-        abort_unless($request->user()?->canAccessCommercialFeatures(), 403);
+        $user = $request->user();
+
+        // Allow commercial users (admin/employee) or compliance users to access fiche details/history
+        abort_unless($user?->canAccessCommercialFeatures() || $user?->isCompliance(), 403);
     }
 
     private function ensureCanModifyFiche(Request $request, FichePropose $fichePropose): void
@@ -36,7 +40,8 @@ class NewDossierController extends Controller
 
     private function applyVisibleFicheScope($query, ?User $user)
     {
-        if ($user?->isAdmin()) {
+        // Admins and compliance users can see all fiches; others see only commercial-owned fiches
+        if ($user?->isAdmin() || $user?->isCompliance()) {
             return $query;
         }
 
@@ -398,7 +403,7 @@ class NewDossierController extends Controller
             ->with('status', 'Nouveau resume ajoute avec succes.');
     }
 
-    public function storeFichePropose(Request $request)
+    public function storeFichePropose(Request $request, ComplianceService $complianceService)
     {
         if ($request->input('dossier_type') === 'fiche-client') {
             $this->ensureEmployeeCommercial($request);
@@ -421,6 +426,29 @@ class NewDossierController extends Controller
             'contacts.*.tel' => ['required', 'regex:/^\d{10}$/'],
             'contacts.*.email' => ['nullable', 'email', 'max:255'],
             'contacts.*.poste' => ['nullable', 'string', 'max:255'],
+            'legal_representative.full_name' => ['nullable', 'string', 'max:255'],
+            'legal_representative.father_name' => ['nullable', 'string', 'max:255'],
+            'legal_representative.mother_name' => ['nullable', 'string', 'max:255'],
+            'legal_representative.nationality' => ['nullable', 'string', 'max:255'],
+            'legal_representative.birth_date' => ['nullable', 'date'],
+            'legal_representative.birth_place' => ['nullable', 'string', 'max:255'],
+            'legal_representative.document_number' => ['nullable', 'string', 'max:255'],
+            'authorized_signatories' => ['nullable', 'array'],
+            'authorized_signatories.*.full_name' => ['nullable', 'string', 'max:255'],
+            'authorized_signatories.*.father_name' => ['nullable', 'string', 'max:255'],
+            'authorized_signatories.*.mother_name' => ['nullable', 'string', 'max:255'],
+            'authorized_signatories.*.nationality' => ['nullable', 'string', 'max:255'],
+            'authorized_signatories.*.birth_date' => ['nullable', 'date'],
+            'authorized_signatories.*.birth_place' => ['nullable', 'string', 'max:255'],
+            'authorized_signatories.*.document_number' => ['nullable', 'string', 'max:255'],
+            'shareholders' => ['nullable', 'array'],
+            'shareholders.*.full_name' => ['nullable', 'string', 'max:255'],
+            'shareholders.*.father_name' => ['nullable', 'string', 'max:255'],
+            'shareholders.*.mother_name' => ['nullable', 'string', 'max:255'],
+            'shareholders.*.nationality' => ['nullable', 'string', 'max:255'],
+            'shareholders.*.birth_date' => ['nullable', 'date'],
+            'shareholders.*.birth_place' => ['nullable', 'string', 'max:255'],
+            'shareholders.*.document_number' => ['nullable', 'string', 'max:255'],
             'piece_jointe' => ['required_if:dossier_type,fiche-client', 'nullable', 'file', 'max:10240', 'mimes:pdf,doc,docx,jpg,jpeg,png'],
             'contract_amount' => ['required_if:dossier_type,fiche-client', 'nullable', 'numeric', 'min:0.01'],
             'contract_signed_at' => ['required_if:dossier_type,fiche-client', 'nullable', 'date'],
@@ -449,6 +477,9 @@ class NewDossierController extends Controller
             'contract_amount' => $validated['dossier_type'] === 'fiche-client' ? $validated['contract_amount'] : null,
             'contract_signed_at' => $validated['dossier_type'] === 'fiche-client' ? $validated['contract_signed_at'] : null,
             'contract_user_id' => $validated['dossier_type'] === 'fiche-client' ? $request->user()->id : null,
+            'legal_representative' => $this->cleanCompliancePeople([$validated['legal_representative'] ?? []])->first(),
+            'authorized_signatories' => $this->cleanCompliancePeople($validated['authorized_signatories'] ?? [])->values()->all(),
+            'shareholders' => $this->cleanCompliancePeople($validated['shareholders'] ?? [])->values()->all(),
         ];
 
         if ($validated['dossier_type'] === 'fiche-client') {
@@ -489,11 +520,29 @@ class NewDossierController extends Controller
             'user_id' => $request->user()->id,
         ]);
 
+        $complianceMatches = $complianceService->registerFichePeople($fichePropose);
+
         return redirect()
             ->route('new-dossier')
-            ->with('status', $validated['dossier_type'] === 'fiche-client'
+            ->with('status', ($validated['dossier_type'] === 'fiche-client'
                 ? 'Fiche client enregistree avec succes.'
-                : 'Prospect enregistre avec succes.');
+                : 'Prospect enregistre avec succes.')
+                . ($complianceMatches->isNotEmpty() ? ' Statut: En attente de validation Compliance.' : ''));
+    }
+
+    private function cleanCompliancePeople(array $people)
+    {
+        return collect($people)
+            ->map(fn (array $person) => collect([
+                'full_name' => $person['full_name'] ?? null,
+                'father_name' => $person['father_name'] ?? null,
+                'mother_name' => $person['mother_name'] ?? null,
+                'nationality' => $person['nationality'] ?? null,
+                'birth_date' => $person['birth_date'] ?? null,
+                'birth_place' => $person['birth_place'] ?? null,
+                'document_number' => $person['document_number'] ?? null,
+            ])->map(fn ($value) => is_string($value) ? trim($value) : $value)->all())
+            ->filter(fn (array $person) => collect($person)->filter(fn ($value) => filled($value))->isNotEmpty());
     }
 
     public function indexClientConversionRequests(Request $request)
@@ -524,7 +573,18 @@ class NewDossierController extends Controller
 
         $users = User::query()
             ->select(['id', 'name', 'email', 'phone', 'role', 'company', 'created_at'])
-            ->whereIn('role', ['employee', 'admin', 'dg', 'DG'])
+            ->whereIn('role', [
+                'employee',
+                'admin',
+                'dg',
+                'DG',
+                'responsable_conformite',
+                'charge_conformite',
+                'analyse_conformite',
+                'responsable conformite',
+                'charge conformite',
+                'analyse conformite',
+            ])
             ->orderBy('name')
             ->get();
 

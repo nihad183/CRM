@@ -212,6 +212,11 @@
             color: #991b1b;
         }
 
+        .status-chip.compliance {
+            background: rgba(14, 165, 233, 0.16);
+            color: #075985;
+        }
+
         .date-cell {
             white-space: nowrap;
             color: #334155;
@@ -396,6 +401,9 @@
                                 <td class="company">
                                     <span>{{ $fiche->nom_entreprise }}</span>
                                     <span class="status-chip">{{ $fiche->user?->companyLabel() ?? 'Invest Market' }}</span>
+                                    @if ($fiche->compliance_status === 'pending_validation')
+                                        <span class="status-chip compliance">En attente validation Compliance</span>
+                                    @endif
                                     <span class="expand-indicator" aria-hidden="true">+</span>
                                 </td>
                                 <td class="date-cell">{{ $fiche->created_at?->format('Y-m-d H:i') }}</td>

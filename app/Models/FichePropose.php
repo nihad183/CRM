@@ -18,6 +18,7 @@ class FichePropose extends Model
         'is_fiche_client',
         'converted_to_client_at',
         'client_conversion_status',
+        'compliance_status',
         'piece_jointe_uploaded_by',
         'piece_jointe_uploaded_at',
         'conversion_reviewed_by',
@@ -36,6 +37,9 @@ class FichePropose extends Model
         'nis',
         'nis_piece_path',
         'nis_piece_original_name',
+        'legal_representative',
+        'authorized_signatories',
+        'shareholders',
     ];
 
     public function user(): BelongsTo
@@ -68,6 +72,16 @@ class FichePropose extends Model
         return $this->hasMany(FicheProposeResume::class)->latest();
     }
 
+    public function complianceEntries(): HasMany
+    {
+        return $this->hasMany(ComplianceEntry::class);
+    }
+
+    public function complianceMatches(): HasMany
+    {
+        return $this->hasMany(ComplianceMatch::class);
+    }
+
     public function hasCompleteClientDocuments(): bool
     {
         return filled($this->n_rc)
@@ -86,6 +100,9 @@ class FichePropose extends Model
             'conversion_reviewed_at' => 'datetime',
             'contract_signed_at' => 'date',
             'contract_amount' => 'decimal:2',
+            'legal_representative' => 'array',
+            'authorized_signatories' => 'array',
+            'shareholders' => 'array',
         ];
     }
 

@@ -5,6 +5,7 @@ import {
   FolderPlus,
   FileUser,
   FileText,
+  FileCheck,
   ShieldCheck,
   Trophy,
   Users,
@@ -13,8 +14,13 @@ import {
 
 export default function Navbar({ userRole = "employee" }) {
   const currentPath = window.location.pathname;
-  const normalizedRole = String(userRole || "employee").trim().toLowerCase();
+  const normalizedRole = String(userRole || "employee").trim().toLowerCase().replace(/[\s-]+/g, "_");
   const isAdmin = ["admin", "dg"].includes(normalizedRole);
+  const isCompliance = [
+    "responsable_conformite",
+    "charge_conformite",
+    "analyse_conformite",
+  ].includes(normalizedRole);
   const canManageUsers = ["admin", "dg"].includes(normalizedRole);
 
   return (
@@ -81,6 +87,18 @@ export default function Navbar({ userRole = "employee" }) {
           >
             <ShieldCheck
               color={currentPath === "/admin/client-conversion-requests" ? "#2563eb" : "#000000"}
+              size={20}
+            />
+          </DockItem>
+        ) : null}
+        {normalizedRole === "admin" || isCompliance ? (
+          <DockItem
+            label="Conformite"
+            isActive={currentPath === "/compliance"}
+            href="/compliance"
+          >
+            <FileCheck
+              color={currentPath === "/compliance" ? "#2563eb" : "#000000"}
               size={20}
             />
           </DockItem>

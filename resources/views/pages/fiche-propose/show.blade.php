@@ -14,6 +14,39 @@
                 ];
             })
             ->values();
+        $compliancePersonFields = [
+            'full_name' => 'Nom complet',
+            'father_name' => 'Nom pere',
+            'mother_name' => 'Nom mere',
+            'nationality' => 'Nationalite',
+            'birth_date' => 'Date naissance',
+            'birth_place' => 'Lieu naissance',
+            'document_number' => 'Document',
+        ];
+        $normalizeCompliancePeople = function ($people) use ($compliancePersonFields) {
+            if (blank($people)) {
+                return [];
+            }
+
+            $people = (array) $people;
+            $personKeys = array_keys($compliancePersonFields);
+            $personHasData = fn (array $person) => collect($personKeys)
+                ->contains(fn ($key) => filled($person[$key] ?? null));
+
+            if (collect($personKeys)->contains(fn ($key) => array_key_exists($key, $people))) {
+                return $personHasData($people) ? [$people] : [];
+            }
+
+            return collect($people)
+                ->map(fn ($person) => (array) $person)
+                ->filter($personHasData)
+                ->values()
+                ->all();
+        };
+        $legalRepresentatives = $normalizeCompliancePeople($fiche->legal_representative);
+        $authorizedSignatories = $normalizeCompliancePeople($fiche->authorized_signatories);
+        $shareholders = $normalizeCompliancePeople($fiche->shareholders);
+        $hasComplianceDetails = filled($legalRepresentatives) || filled($authorizedSignatories) || filled($shareholders);
     @endphp
 
     <style>
@@ -266,6 +299,60 @@
             color: #64748b;
         }
 
+        .compliance-details-list {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .compliance-section {
+            border: 1px solid #c9d8ea;
+            border-radius: 14px;
+            background: #ffffff;
+            overflow: hidden;
+        }
+
+        .compliance-section-title {
+            margin: 0;
+            padding: 12px 16px;
+            background: #eef5f9;
+            color: #0f172a;
+            font-size: 15px;
+            font-weight: 800;
+        }
+
+        .compliance-table-wrap {
+            overflow-x: auto;
+        }
+
+        .compliance-table {
+            width: 100%;
+            min-width: 860px;
+            border-collapse: collapse;
+        }
+
+        .compliance-table th,
+        .compliance-table td {
+            padding: 11px 12px;
+            border-top: 1px solid #dbe4ee;
+            text-align: left;
+            vertical-align: top;
+            font-size: 13px;
+        }
+
+        .compliance-table th {
+            color: #0f172a;
+            font-weight: 800;
+            white-space: nowrap;
+            background: #f8fafc;
+        }
+
+        .compliance-table td {
+            color: #334155;
+            font-weight: 600;
+            word-break: break-word;
+        }
+
         .resume-table {
             width: 100%;
             border-collapse: collapse;
@@ -508,7 +595,7 @@
             @endif
 
             @unless ($canModifyFiche)
-                <div class="status-box">هذه البطاقة في وضع العرض فقط. يمكنك رؤية ملفات الشركة الاخرى لكن لا يمكنك تعديلها.</div>
+                <div class="status-box">Cette carte est en mode lecture seule. Vous pouvez consulter les autres fichiers de l’entreprise, mais vous ne pouvez pas les modifier.</div>
             @endunless
 
             @if ($fiche->client_conversion_status === 'pending')
@@ -562,6 +649,54 @@
                                 </div>
                             </details>
                         </div>
+
+                            @if ($hasComplianceDetails)
+                                <div class="info-block is-dropdown">
+                                    <details class="contacts-toggle">
+                                        <summary class="contacts-toggle-summary">
+                                            <span class="info-label">Compliance details:</span>
+                                            <span class="info-value"></span>
+                                            <span class="contacts-arrow" aria-hidden="true"></span>
+                                        </summary>
+
+                                        <div class="contacts-toggle-body">
+                                            <div class="compliance-details-list">
+                                                @foreach ([
+                                                    'Representant legal' => $legalRepresentatives,
+                                                    'Mandataires signature' => $authorizedSignatories,
+                                                    'Actionnaires' => $shareholders,
+                                                ] as $sectionTitle => $people)
+                                                    @if (filled($people))
+                                                        <section class="compliance-section">
+                                                            <h3 class="compliance-section-title">{{ $sectionTitle }}</h3>
+                                                            <div class="compliance-table-wrap">
+                                                                <table class="compliance-table">
+                                                                    <thead>
+                                                                        <tr>
+                                                                            @foreach ($compliancePersonFields as $label)
+                                                                                <th>{{ $label }}</th>
+                                                                            @endforeach
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        @foreach ($people as $person)
+                                                                            <tr>
+                                                                                @foreach ($compliancePersonFields as $field => $label)
+                                                                                    <td>{{ $person[$field] ?? '-' }}</td>
+                                                                                @endforeach
+                                                                            </tr>
+                                                                        @endforeach
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
+                                                        </section>
+                                                    @endif
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                    </details>
+                                </div>
+                            @endif
 
                         <div class="info-block">
                             <span class="info-label">Date creation:</span>

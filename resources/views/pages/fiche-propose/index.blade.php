@@ -227,6 +227,11 @@
             color: #991b1b;
         }
 
+        .status-chip.compliance {
+            background: rgba(14, 165, 233, 0.16);
+            color: #075985;
+        }
+
         .next-link {
             display: inline-flex;
             align-items: center;
@@ -395,6 +400,9 @@
                                         <span class="status-chip pending">En attente admin</span>
                                     @elseif ($fiche->client_conversion_status === 'rejected')
                                         <span class="status-chip rejected">Refuse</span>
+                                    @endif
+                                    @if ($fiche->compliance_status === 'pending_validation')
+                                        <span class="status-chip compliance">En attente validation Compliance</span>
                                     @endif
                                     <span class="expand-indicator" aria-hidden="true">+</span>
                                 </td>
